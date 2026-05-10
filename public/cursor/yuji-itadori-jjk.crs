@@ -1,0 +1,51 @@
+﻿[Arrow]
+Path=Yuji Itadori.ani
+
+[Hand]
+Path=Yuji Link.ani
+
+[Wait]
+Path=Yuji Busy.ani
+
+[UpArrow]
+Path=Yuji Alternate.ani
+
+[Crosshair]
+Path=Yuji Precision.ani
+
+[NWPen]
+Path=Yuji Handwriting.ani
+
+[Pin]
+Path=Yuji Location.ani
+
+[IBeam]
+Path=Yuji Text.ani
+
+[SizeNWSE]
+Path=Yuji Diagonal 1.ani
+
+[SizeAll]
+Path=Yuji Move.ani
+
+[AppStarting]
+Path=Yuji Working.ani
+
+[No]
+Path=Yuji Unavailable.ani
+
+[SizeNESW]
+Path=Yuji Diagonal 2.ani
+
+[Help]
+Path=Yuji Help.ani
+
+[SizeWE]
+Path=Yuji Horizontal.ani
+
+[Person]
+Path=Yuji Person.ani
+
+[SizeNS]
+Path=Yuji Vertical.ani
+
