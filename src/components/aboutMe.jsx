@@ -132,7 +132,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
           ◆ ABOUT ME ◆
         </div>
         <h1 style={{ fontSize: 36, fontWeight: 800, color: '#ffffff', marginBottom: 16, textShadow: '0 0 18px #cc1111, 0 0 40px #880000', letterSpacing: 1 }}>
-          Vaibhav
+          redac1ed
         </h1>
         <div style={{ width: 60, height: 2, background: 'linear-gradient(90deg, transparent, #cc1111, transparent)', margin: '0 auto 24px' }} />
         <p style={{ fontSize: 15, lineHeight: 1.85, color: '#c9a8a8', marginBottom: 20 }}>
