@@ -1,88 +1,74 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef } from 'react';
+import { gsap } from 'gsap';
 
 export default function StartupAnimation({ onComplete }) {
-  const [stage, setStage] = useState('drawing');
+  const containerRef = useRef(null);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setStage('revealing'), 2000);
-    const t2 = setTimeout(() => setStage('fading'), 4500);
-    const t3 = setTimeout(() => onComplete(), 5500);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
+    if (!containerRef.current || !wrapperRef.current) return;
+    const lines = containerRef.current.querySelectorAll('.hash-line');
+    const tl = gsap.timeline({
+      onComplete: () => {
+        gsap.to(wrapperRef.current, {
+          opacity: 0,
+          duration: 1,
+          onComplete: onComplete
+        });
+      }
+    });
+    tl.fromTo(lines,
+      { strokeDasharray: 100, strokeDashoffset: 100 },
+      { strokeDashoffset: 0, duration: 1, stagger: 0.2, ease: "expo.inOut" }
+    )
+    .to(lines, {
+      opacity: 0,
+      duration: 0.5,
+      delay: 1, 
+      ease: "power2.in"
+    });
   }, [onComplete]);
 
   return (
-    <motion.div
-      className="fixed inset-0 z-[100] pointer-events-none"
-      initial={{ opacity: 1 }}
-      animate={{ opacity: stage === 'fading' ? 0 : 1 }}
-      transition={{ duration: 1 }}
+    <div
+      ref={wrapperRef}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 100,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: '#160000',
+        pointerEvents: 'none'
+      }}
     >
-      <AnimatePresence>
-        {stage === 'drawing' && (
-          <motion.div
-            style={{
-              position: 'fixed',
-              top: '50vh',
-              left: '50vw',
-              marginLeft: '-110px',
-              marginTop: '-110px'
-            }}
-            initial={{ opacity: 1, scale: 1 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 1.5 }}
-            transition={{ duration: 1 }}
-          >
-            <svg
-              width="220"
-              height="220"
-              viewBox="0 0 100 100"
-              style={{ display: 'block' }}
-            >
-              <motion.line
-                x1="45" y1="10" x2="25" y2="90"
-                stroke="white"
-                strokeWidth="8"
-                strokeLinecap="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.8, ease: "easeInOut" }}
-              />
-              <motion.line
-                x1="75" y1="10" x2="55" y2="90"
-                stroke="white"
-                strokeWidth="8"
-                strokeLinecap="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.8, ease: "easeInOut", delay: 0.2 }}
-              />
-              <motion.line
-                x1="15" y1="35" x2="85" y2="35"
-                stroke="white"
-                strokeWidth="8"
-                strokeLinecap="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.8, ease: "easeInOut", delay: 0.4 }}
-              />
-              <motion.line
-                x1="15" y1="65" x2="85" y2="65"
-                stroke="white"
-                strokeWidth="8"
-                strokeLinecap="round"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.8, ease: "easeInOut", delay: 0.6 }}
-              />
-            </svg>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      <style>{`
+        .hash-line {
+          transform-origin: center;
+          transition: stroke 0.3s ease;
+        }
+        svg:hover .hash-line {
+          stroke: #ffffff;
+          filter: drop-shadow(0 0 8px #F40C3F);
+        }
+      `}</style>
+      <svg
+        ref={containerRef}
+        width="200"
+        height="200"
+        viewBox="0 0 100 100"
+        fill="none"
+        stroke="#F40C3F"
+        strokeWidth="6"
+        strokeLinecap="round"
+        style={{ pointerEvents: 'auto' }}
+      >
+        <line className="hash-line" x1="20" y1="35" x2="80" y2="35" />
+        <line className="hash-line" x1="20" y1="65" x2="80" y2="65" />
+        <line className="hash-line" x1="35" y1="20" x2="35" y2="80" />
+        <line className="hash-line" x1="65" y1="20" x2="65" y2="80" />
+      </svg>
+    </div>
   );
 }
