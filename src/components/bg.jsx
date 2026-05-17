@@ -600,8 +600,23 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
   }, []);
 
   return (
-    <div className="fixed inset-0 z-0 bg-[#000000] w-screen h-screen">
-      <div ref={bgRef} className="absolute inset-0 bg-gradient-to-b from-[#2a0306] via-[#1a0205] to-[#050102] opacity-0" />
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 0,
+      backgroundColor: '#000000',
+      width: '100vw',
+      height: '100vh',
+    }}>
+      <div
+        ref={bgRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to bottom, #2a0306, #1a0205, #050102)',
+          opacity: 0,
+        }}
+      />
       <Canvas camera={{ position: [0, 20, 90], fov: 10 }} style={{ width: '100vw', height: '100vh' }}>
         <SceneContent zoomed={zoomed} rotationTarget={rotationTarget} onRotationComplete={onRotationComplete} onAboutOpen={onAboutOpen} rushTarget={rushTarget} onRushComplete={onRushComplete} />
       </Canvas>

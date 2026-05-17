@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import anime from 'animejs';
 import { X } from 'lucide-react';
+import VideoCarousel from './anime';
 
 export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut, onOutComplete }) {
   const overlayRef = useRef();
@@ -8,6 +9,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   const contentRef = useRef();
   const animRef = useRef(null);
   const bgAnimRef = useRef(null);
+  const [showAnime, setShowAnime] = useState(false);
 
   useEffect(() => {
     if (!contentRef.current || !overlayRef.current || !bgRef.current) return;
@@ -117,6 +119,8 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
           zIndex: 1,
           maxWidth: 700,
           width: '90%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           color: '#f5e6e6',
           fontFamily: "'Segoe UI', sans-serif",
           textAlign: 'center',
@@ -141,7 +145,95 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         <p style={{ fontSize: 14, lineHeight: 1.85, color: '#9a7878' }}>
           Passionate about React, Three.js, and pushing the limits of what a browser can render.
         </p>
+
+        {/* Anime toggle button */}
+        <div
+          style={{
+            marginTop: 32,
+            width: 200,
+            height: 60,
+            margin: '32px auto 0 auto',
+            background: 'linear-gradient(135deg, rgba(204,17,17,0.3), rgba(239,68,68,0.2))',
+            border: '2px solid #cc1111',
+            borderRadius: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(204,17,17,0.5), rgba(239,68,68,0.4))';
+            e.currentTarget.style.boxShadow = '0 0 20px rgba(204,17,17,0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(204,17,17,0.3), rgba(239,68,68,0.2))';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+          onClick={() => setShowAnime(true)}
+        >
+          <div style={{
+            fontSize: 16,
+            fontWeight: 800,
+            color: '#006793',
+            textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+            fontStyle: 'italic',
+            letterSpacing: 2,
+          }}>
+            ▶ ANIME REELS
+          </div>
+        </div>
       </div>
+
+      {/* Anime popup modal */}
+      {showAnime && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.7)',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowAnime(false);
+          }}
+        >
+          <div style={{
+            position: 'relative',
+            width: '80vw',
+            maxWidth: 900,
+            border: '1px solid rgba(204,17,17,0.4)',
+            borderRadius: 12,
+            overflow: 'hidden',
+            boxShadow: '0 0 40px rgba(204,17,17,0.3)',
+          }}>
+            <button
+              onClick={() => setShowAnime(false)}
+              style={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                background: 'rgba(10,10,10,0.85)',
+                border: '2px solid #ef4444',
+                borderRadius: '50%',
+                width: 36,
+                height: 36,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                zIndex: 201,
+              }}
+            >
+              <X style={{ width: 18, height: 18, color: '#f87171' }} />
+            </button>
+            <VideoCarousel active={showAnime} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

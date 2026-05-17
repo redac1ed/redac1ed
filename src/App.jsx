@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import AnimeBackground from './components/bg';
-import VideoCarousel from './components/anime';
 import StartupAnimation from './components/startup';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import anime from 'animejs';
@@ -34,7 +33,6 @@ function RushFlash({ onComplete }) {
 }
 
 export default function App() {
-  const [zoomed, setZoomed] = useState(false);
   const [showStartup, setShowStartup] = useState(true);
   const [rotationTarget, setRotationTarget] = useState(null);
   const [currentFace, setCurrentFace] = useState(0);
@@ -71,9 +69,18 @@ export default function App() {
 
   return (
     <>
+      <style>{`
+        html, body, #root {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          overflow: hidden;
+        }
+      `}</style>
       {showStartup && <StartupAnimation onComplete={() => setShowStartup(false)} />}
       <AnimeBackground
-        zoomed={zoomed}
+        zoomed={false}
         rotationTarget={rotationTarget}
         currentFace={currentFace}
         onRotationComplete={handleRotationComplete}
@@ -81,14 +88,14 @@ export default function App() {
         rushTarget={rushTarget}
         onRushComplete={handleRushComplete}
       />
-      <VideoCarousel zoomed={zoomed} />
-      {(rushTarget?.type === 'in' || showAbout) && <AboutMeOverlay onClose={handleAboutClose} isAnimatingIn={rushTarget?.type === 'in'} isAnimatingOut={rushTarget?.type === 'out'} onOutComplete={handleOutComplete} />}
-      <button
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-full shadow-lg transition-colors"
-        onClick={() => setZoomed(!zoomed)}
-      >
-        {zoomed ? 'Zoom Out' : 'Zoom In'}
-      </button>
+      {(rushTarget?.type === 'in' || showAbout) && (
+        <AboutMeOverlay
+          onClose={handleAboutClose}
+          isAnimatingIn={rushTarget?.type === 'in'}
+          isAnimatingOut={rushTarget?.type === 'out'}
+          onOutComplete={handleOutComplete}
+        />
+      )}
       <button
         onClick={rotateLeft}
         style={{ position: 'fixed', left: 24, top: '50%', transform: 'translateY(-50%)', width: 56, height: 56, borderRadius: '50%', background: 'rgba(10,10,10,0.85)', border: '2px solid #ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 50 }}

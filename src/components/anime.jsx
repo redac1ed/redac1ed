@@ -7,17 +7,20 @@ const videos = [
   { src: '/ylia.mp4', maxTime: 90 },  
 ];
 
-export default function VideoCarousel({ zoomed }) {
+export default function VideoCarousel({ active }) {
   const [rotation, setRotation] = useState(0);
   const videoRefs = useRef([]);
   const scrollLock = useRef(false);
+  const containerRef = useRef(null);
   const n = videos.length;
   const step = 360 / n;
   const currentIndex = ((Math.round(rotation / step) % n) + n) % n;
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
     const handleWheel = (e) => {
-      if (!zoomed) return;
+      if (!active) return;
       e.preventDefault();
       if (scrollLock.current) return;
       scrollLock.current = true;
@@ -29,9 +32,9 @@ export default function VideoCarousel({ zoomed }) {
         setRotation((prev) => prev - step);
       }
     };
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, [zoomed, step]);
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [active, step]);
 
   useEffect(() => {
     const handlers = [];
@@ -50,13 +53,13 @@ export default function VideoCarousel({ zoomed }) {
         video.removeEventListener('timeupdate', handler);
       });
     };
-  }, [zoomed]);
+  }, [active]);
 
   useEffect(() => {
     videoRefs.current.forEach((video, i) => {
       if (!video) return;
       const oppositeIndex = (currentIndex + Math.floor(n / 2)) % n;
-      if (i === oppositeIndex && zoomed) {
+      if (i === oppositeIndex && active) {
         video.muted = false;
         video.play().catch(() => {});
       } else {
@@ -64,22 +67,31 @@ export default function VideoCarousel({ zoomed }) {
         video.pause();
       }
     });
-  }, [currentIndex, zoomed, n]);
-  if (!zoomed) return null;
+  }, [currentIndex, active, n]);
+
+  if (!active) return null;
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center overflow-hidden"
+      ref={containerRef}
       style={{
+        position: 'relative',
+        width: '100%',
+        height: '400px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
         background: 'radial-gradient(circle, #2a2a2a 1px, #0a0a0a 1px)',
         backgroundSize: '20px 24px',
-        perspective: '1900px',
+        perspective: '900px',
+        borderRadius: 8,
       }}
     >
       <div
         style={{
-          width: '100vw',
-          height: '100vh',
+          width: '100%',
+          height: '100%',
           transformStyle: 'preserve-3d',
           transform: `rotateY(${-rotation}deg)`,
           transition: 'transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
@@ -88,18 +100,18 @@ export default function VideoCarousel({ zoomed }) {
       >
         {videos.map(({ src }, i) => {
           const angle = (i / n) * 360;
-          const radius = 1900;
+          const radius = 1500;
           return (
             <div
               key={src}
               style={{
                 position: 'absolute',
-                width: '1400px',
-                height: '600px',
+                width: '400px',
+                height: '220px',
                 left: '50%',
                 top: '50%',
-                marginLeft: '-700px',
-                marginTop: '-300px',
+                marginLeft: '-200px',
+                marginTop: '-110px',
                 transformStyle: 'preserve-3d',
                 transform: `rotateY(${angle}deg) translateZ(${radius}px) rotateY(180deg)`,
               }}
@@ -113,8 +125,8 @@ export default function VideoCarousel({ zoomed }) {
                   objectFit: 'cover',
                   display: 'block',
                   pointerEvents: 'none',
-                  borderRadius: '12px',
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
                 }}
                 loop
                 playsInline
