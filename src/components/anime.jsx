@@ -77,15 +77,15 @@ export default function VideoCarousel({ active }) {
       style={{
         position: 'relative',
         width: '100%',
-        height: '400px',
+        height: '600px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
-        background: 'radial-gradient(circle, #2a2a2a 1px, #0a0a0a 1px)',
-        backgroundSize: '20px 24px',
-        perspective: '900px',
+        background: '#0a0a0a',
+        perspective: '1200px',
         borderRadius: 8,
+        contain: 'paint',
       }}
     >
       <div
@@ -94,26 +94,30 @@ export default function VideoCarousel({ active }) {
           height: '100%',
           transformStyle: 'preserve-3d',
           transform: `rotateY(${-rotation}deg)`,
+          willChange: 'transform',
           transition: 'transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           position: 'relative',
         }}
       >
         {videos.map(({ src }, i) => {
           const angle = (i / n) * 360;
-          const radius = 1500;
+          const radius = 1200; 
           return (
             <div
               key={src}
               style={{
                 position: 'absolute',
-                width: '400px',
-                height: '220px',
+                width: '800px',
+                height: '450px',
                 left: '50%',
                 top: '50%',
-                marginLeft: '-200px',
-                marginTop: '-110px',
+                marginLeft: '-400px',
+                marginTop: '-225px',
                 transformStyle: 'preserve-3d',
                 transform: `rotateY(${angle}deg) translateZ(${radius}px) rotateY(180deg)`,
+                willChange: 'transform',
+                backfaceVisibility: 'hidden',
+                contain: 'layout paint',
               }}
             >
               <video
@@ -125,8 +129,9 @@ export default function VideoCarousel({ active }) {
                   objectFit: 'cover',
                   display: 'block',
                   pointerEvents: 'none',
-                  borderRadius: '8px',
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
+                  borderRadius: '12px',
+                  backgroundColor: '#000',
+                  transform: 'translateZ(0)',
                 }}
                 loop
                 playsInline

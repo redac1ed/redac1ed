@@ -23,6 +23,8 @@ const PANELS = [
 export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }) {
   const [htmlVisible, setHtmlVisible] = useState(false);
   const [displayFace, setDisplayFace] = useState(currentFace);
+  const [typedTitle, setTypedTitle] = useState('');
+  const [typedDesc, setTypedDesc] = useState('');
   const innerDivRef = useRef();
   useEffect(() => {
     if (visible) {
@@ -32,27 +34,32 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
     }
   }, [visible]);
   useEffect(() => {
-    if (currentFace === displayFace || !innerDivRef.current) return;
-    const diff = currentFace - displayFace;
-    const direction = (diff === 1 || diff === -3) ? 1 : -1;
-    anime({
-      targets: innerDivRef.current,
-      translateX: direction * 150,
-      opacity: 0,
-      duration: 350,
-      easing: 'easeInQuad',
-      complete: () => {
-        setDisplayFace(currentFace);
-        anime({
-          targets: innerDivRef.current,
-          translateX: [-direction * 150, 0],
-          opacity: [0, 1],
-          duration: 450,
-          easing: 'easeOutQuad'
-        });
+    const currentPanel = PANELS[currentFace] || PANELS[0];
+    const fullTitle = currentPanel.title;
+    const fullDesc = currentPanel.description;
+    setTypedTitle('');
+    setTypedDesc('');
+    if (!fullTitle) return; 
+    let titleIndex = 0;
+    let descIndex = 0;
+    const titleInterval = setInterval(() => {
+      setTypedTitle(fullTitle.substring(0, titleIndex + 1));
+      titleIndex++;
+      if (titleIndex >= fullTitle.length) {
+        clearInterval(titleInterval);
+        const descInterval = setInterval(() => {
+          setTypedDesc(fullDesc.substring(0, descIndex + 1));
+          descIndex++;
+          if (descIndex >= fullDesc.length) {
+            clearInterval(descInterval);
+          }
+        }, 20);
       }
-    });
-  }, [currentFace, displayFace]);
+    }, 40); 
+    return () => {
+      clearInterval(titleInterval);
+    };
+  }, [currentFace]);
 
   if (!visible && !htmlVisible) return null;
   const currentPanel = PANELS[displayFace]; 
@@ -70,7 +77,6 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
       transition: 'opacity 0.8s ease'
     }}>
       <div
-          ref={innerDivRef}
           onClick={isClickable && currentPanel.title ? onAboutOpen : undefined}
           style={{
             width: '420px',
@@ -94,12 +100,15 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
               <div style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: '#cc2222', marginBottom: '8px', fontWeight: 700 }}>
                 ◆ DOMAIN EXPANSION ◆
               </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffffff', marginBottom: '12px', textShadow: '0 0 18px #cc1111, 0 0 40px #880000', letterSpacing: '1px' }}>
-                {currentPanel.title}
+              
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffffff', minHeight: '33px', marginBottom: '12px', textShadow: '0 0 18px #cc1111, 0 0 40px #880000', letterSpacing: '1px' }}>
+                {typedTitle}
               </div>
+              
               <div style={{ width: '50px', height: '2px', background: 'linear-gradient(90deg, transparent, #cc1111, transparent)', margin: '0 auto 14px' }} />
-              <div style={{ fontSize: '12px', lineHeight: '1.75', color: '#c9a8a8', fontWeight: 400, whiteSpace: 'pre-line' }}>
-                {currentPanel.description}
+              
+              <div style={{ fontSize: '12px', lineHeight: '1.75', color: '#c9a8a8', fontWeight: 400, whiteSpace: 'pre-line', minHeight: '42px' }}>
+                {typedDesc}
               </div>
             </>
           )}
