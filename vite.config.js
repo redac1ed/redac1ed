@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   build: {
-    chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    sourcemap: false, 
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks: {
