@@ -1,21 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer';
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), visualizer()],
   base: '/',
   build: {
-    minify: 'terser',
-    sourcemap: false, 
+    sourcemap: false,
     cssCodeSplit: true,
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {
-          'three-vendor': ['three', '@react-three/fiber', '@react-three/drei'],
-          'anime-vendor': ['animejs'],
-          'framer-vendor': ['framer-motion', 'gsap'],
+          'three-core': ['three'],
+          'three-addons': ['@react-three/fiber'],
+          'drei': ['@react-three/drei'],
+          'gsap': ['gsap'],
+          'framer': ['framer-motion'],
         }
       }
     }

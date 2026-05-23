@@ -6,6 +6,7 @@ import hpp from 'hpp';
 import helmet from 'helmet';
 import compression from 'compression';
 import cors from 'cors';
+import { ipKeyGenerator } from 'express-rate-limit';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -13,7 +14,7 @@ const PORT = process.env.PORT || 3000;
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  keyGenerator: (req) => req.headers['cf-connecting-ip'] || req.ip,
+  keyGenerator: (req) => req.headers['cf-connecting-ip'] || ipKeyGenerator(req),
   standardHeaders: true,
   legacyHeaders: false,
 });

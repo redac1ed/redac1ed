@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import AnimeBackground from './components/bg';
 import anime from 'animejs';
+const AnimeBackground = lazy(() => import('./components/bg'));
 const StartupAnimation = lazy(() => import('./components/startup'));
 const AboutMeOverlay = lazy(() => import('./components/aboutMe'));
 
@@ -76,15 +76,17 @@ export default function App() {
         }
       `}</style>
       {showStartup && <StartupAnimation onComplete={() => setShowStartup(false)} />}
-      <AnimeBackground
-        zoomed={false}
-        rotationTarget={rotationTarget}
-        currentFace={currentFace}
-        onRotationComplete={handleRotationComplete}
-        onAboutOpen={handleAboutOpen}
-        rushTarget={rushTarget}
-        onRushComplete={handleRushComplete}
-      />
+      <Suspense fallback={<div />}>
+        <AnimeBackground
+          zoomed={false}
+          rotationTarget={rotationTarget}
+          currentFace={currentFace}
+          onRotationComplete={handleRotationComplete}
+          onAboutOpen={handleAboutOpen}
+          rushTarget={rushTarget}
+          onRushComplete={handleRushComplete}
+        />
+      </Suspense>
       {(rushTarget?.type === 'in' || showAbout) && (
         <Suspense fallback={null}>
           <AboutMeOverlay
