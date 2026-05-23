@@ -1,8 +1,8 @@
 {
-  "name": "redac1ed.github.io",
+  "name": "redac.me",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://redac1ed.github.io/",
+  "homepage": "https://redac.me",
   "type": "module",
   "scripts": {
     "dev": "vite",

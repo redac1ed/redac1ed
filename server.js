@@ -20,13 +20,10 @@ const apiLimiter = rateLimit({
 });
 
 app.set('trust proxy', 2);
+
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-    }
-  }
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
 }));
 app.use(cors({
   origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
@@ -42,7 +39,9 @@ app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(hpp());
 app.use((req, res, next) => {
-  if (!req.headers['cf-connecting-ip']) {
+  const isDev = process.env.NODE_ENV === 'development';
+  const isLocalhost = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
+  if (!isDev && !isLocalhost && !req.headers['cf-connecting-ip']) {
     return res.status(403).send('Direct access forbidden.');
   }
   next();
