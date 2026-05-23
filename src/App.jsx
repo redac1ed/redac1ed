@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import AnimeBackground from './components/bg';
+import anime from 'animejs';
 const StartupAnimation = lazy(() => import('./components/startup'));
 const AboutMeOverlay = lazy(() => import('./components/aboutMe'));
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import anime from 'animejs';
 
 function RushFlash({ onComplete }) {
   const ref = useRef();
@@ -38,7 +39,6 @@ export default function App() {
   const [showAbout, setShowAbout] = useState(false);
   const [rushTarget, setRushTarget] = useState(null);
   const [flashing, setFlashing] = useState(false);
-
   const rotateLeft = () => {
     if (rotationTarget !== null) return; 
     setRotationTarget(-1);
@@ -56,11 +56,9 @@ export default function App() {
   const handleRushComplete = useCallback(() => {
     setShowAbout(true);
   }, []);
-
   const handleAboutClose = useCallback(() => {
     setRushTarget({ type: 'out', ts: Date.now() });
   }, []);
-
   const handleOutComplete = useCallback(() => {
     setShowAbout(false);
     setRushTarget(null);
