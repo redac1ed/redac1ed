@@ -329,7 +329,7 @@ html, body, #root {
 
 svg:hover .hash-line {
   stroke: #ffffff;
-  filter: drop-shadow(0 0 8px #F40C3F);
+  filter: drop-shadow(0 0 10px rgb(255, 255, 255));
 }
 
 .startup-svg {
@@ -410,4 +410,345 @@ svg:hover .hash-line {
   height: 130px;
   object-fit: contain;
   transform: rotate(-15deg);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.card-item::before {
+  content: '';
+  position: absolute;
+  left: var(--shine-x, 50%);
+  top: -10%;
+  width: 28%;
+  height: 120%;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 35%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(255, 255, 255, 0.12) 65%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 100%
+    );
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(6px);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
+  mix-blend-mode: screen;
+  transition: opacity 0.15s ease;
+}
+
+.card-item::before {
+  content: '';
+  position: absolute;
+  left: var(--shine-x, 50%);
+  top: -10%;
+  width: 28%;
+  height: 120%;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.12) 35%,
+      rgba(255, 255, 255, 0.95) 50%,
+      rgba(255, 255, 255, 0.12) 65%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 100%
+    );
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(6px);
+  box-shadow: 0 0 24px rgba(255, 255, 255, 0.35);
+  mix-blend-mode: screen;
+  transition: opacity 0.15s ease;
+}
+
+.about-overlay-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.about-overlay-wrapper.no-pointer {
+  pointer-events: none;
+}
+
+.about-overlay-bg-black {
+  position: absolute;
+  inset: 0;
+  background: #000000;
+  opacity: 0;
+}
+
+.about-overlay-bg-pattern {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, #2a2a2a 1px, transparent 1px);
+  background-size: 20px 24px;
+  opacity: 0;
+  animation: moveBg 4s linear infinite;
+}
+
+.about-close-button {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  background: rgba(10, 10, 10, 0.85);
+  border: 2px solid #ef4444;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 102;
+}
+
+.about-container {
+  position: relative;
+  z-index: 1;
+  width: 90%;
+  max-width: 900px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 48px 20px;
+}
+
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+.card-item {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  overflow: hidden;
+}
+
+.card-item-large {
+  grid-column: span 2;
+  grid-row: span 2;
+  padding: 40px;
+}
+
+.card-item-small {
+  grid-column: span 1;
+  grid-row: span 1;
+  padding: 24px;
+}
+
+.card-item::before {
+  content: '';
+  position: absolute;
+  left: var(--shine-x, 50%);
+  top: -20%;
+  width: 20%;
+  height: 140%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 20%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.2) 80%,
+    transparent 100%
+  );
+  transform: translateX(-50%) rotate(-12deg);
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(8px);
+  mix-blend-mode: screen;
+  transition: opacity 0.2s ease-out;
+  z-index: 5;
+}
+
+.card-item:hover {
+  transform: translateY(-12px);
+  z-index: 10;
+}
+
+.card-item:hover::before {
+  opacity: 1;
+}
+
+.card-label {
+  font-size: inherit;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.card-label-large {
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.card-label-small {
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 2px;
+}
+
+.card-title-large {
+  font-size: 48px;
+  margin-bottom: 24px;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.25);
+}
+
+.card-title-small {
+  font-size: 28px;
+  margin-bottom: 16px;
+  text-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 0, 0, 0.25);
+}
+
+.card-divider {
+  height: 2px;
+  margin: 0 auto;
+}
+
+.card-divider-large {
+  width: 80px;
+  margin-bottom: 24px;
+}
+
+.card-divider-small {
+  width: 50px;
+  margin-bottom: 16px;
+}
+
+.card-description {
+  line-height: 1.6;
+  color: #c9a8a8;
+  max-width: 90%;
+}
+
+.card-description-large {
+  font-size: 16px;
+}
+
+.card-description-small {
+  font-size: 13px;
+}
+
+.expand-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.expand-modal {
+  position: relative;
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: rgba(10, 0, 5, 0.8);
+  border-radius: 12px;
+  padding: 40px;
+  backdrop-filter: blur(8px);
+  transform: scale(0.5);
+  opacity: 0;
+  transform-origin: center;
+}
+
+.expand-close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(10, 10, 10, 0.85);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 201;
+  transition: all 0.2s ease;
+}
+
+.expand-content {
+  text-align: center;
+}
+
+.expand-label {
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.expand-title {
+  font-size: 44px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
+
+.expand-divider {
+  width: 100px;
+  height: 2px;
+  margin: 0 auto 32px;
+}
+
+.expand-video-wrapper {
+  margin-top: 30px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.expand-description {
+  font-size: 18px;
+  line-height: 1.8;
+  color: #c9a8a8;
+  margin-bottom: 24px;
+}
+
+.expand-full-content {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #9a7878;
+  margin-bottom: 20px;
 }

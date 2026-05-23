@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import AnimeBackground from './components/bg';
-import StartupAnimation from './components/startup';
+const StartupAnimation = lazy(() => import('./components/startup'));
+const AboutMeOverlay = lazy(() => import('./components/aboutMe'));
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import anime from 'animejs';
-import AboutMeOverlay from './components/aboutMe';
 
 function RushFlash({ onComplete }) {
   const ref = useRef();
@@ -89,12 +88,14 @@ export default function App() {
         onRushComplete={handleRushComplete}
       />
       {(rushTarget?.type === 'in' || showAbout) && (
-        <AboutMeOverlay
-          onClose={handleAboutClose}
-          isAnimatingIn={rushTarget?.type === 'in'}
-          isAnimatingOut={rushTarget?.type === 'out'}
-          onOutComplete={handleOutComplete}
-        />
+        <Suspense fallback={null}>
+          <AboutMeOverlay
+            onClose={handleAboutClose}
+            isAnimatingIn={rushTarget?.type === 'in'}
+            isAnimatingOut={rushTarget?.type === 'out'}
+            onOutComplete={handleOutComplete}
+          />
+        </Suspense>
       )}
       <button
         onClick={rotateLeft}

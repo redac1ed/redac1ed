@@ -6,36 +6,85 @@ import VideoCarousel from './anime';
 export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut, onOutComplete }) {
   const overlayRef = useRef();
   const bgRef = useRef();
-  const contentRef = useRef();
+  const containerRef = useRef();
   const animRef = useRef(null);
   const bgAnimRef = useRef(null);
-  const [showAnime, setShowAnime] = useState(false);
+  const [expandedCard, setExpandedCard] = useState(null);
+  const expandAnimRef = useRef(null);
+
+  const cards = [
+    {
+      id: 'about',
+      title: 'About Me',
+      subtitle: 'redac1ed',
+      description: 'A developer obsessed with crafting immersive web experiences — blending 3D graphics, animation, and clean code into something that feels alive.',
+      fullContent: 'Passionate about React, Three.js, and pushing the limits of what a browser can render.',
+      size: 'large',
+      color: '#cc1111'
+    },
+    {
+      id: 'anime',
+      title: 'Anime',
+      subtitle: 'REELS',
+      description: 'Creative video projects and animations',
+      fullContent: 'Explore my anime and animation work',
+      size: 'small',
+      color: '#006793'
+    },
+    {
+      id: 'likes',
+      title: 'What I Like',
+      subtitle: '♡',
+      description: 'Things that inspire me',
+      fullContent: 'My interests and passions',
+      size: 'small',
+      color: '#cc1111'
+    },
+    {
+      id: 'games',
+      title: 'Games',
+      subtitle: '◆',
+      description: 'Gaming and interactive experiences',
+      fullContent: 'My favorite games and projects',
+      size: 'small',
+      color: '#1a7a5c'
+    },
+    {
+      id: 'other',
+      title: 'Other',
+      subtitle: '✦',
+      description: 'More about me',
+      fullContent: 'Additional interests and hobbies',
+      size: 'small',
+      color: '#7a3a1a'
+    }
+  ];
 
   useEffect(() => {
-    if (!contentRef.current || !overlayRef.current || !bgRef.current) return;
+    if (!containerRef.current || !overlayRef.current || !bgRef.current) return;
     if (animRef.current) animRef.current.pause();
     if (bgAnimRef.current) bgAnimRef.current.pause();
 
     if (isAnimatingIn) {
       animRef.current = anime({
-        targets: contentRef.current,
-        scale: [0.05, 1],
+        targets: containerRef.current,
+        scale: [0.8, 1],
         opacity: [0, 1],
-        duration: 400,
+        duration: 500,
         easing: 'easeInOutCubic',
       });
       bgAnimRef.current = anime({
         targets: [overlayRef.current, bgRef.current],
         opacity: [0, 1],
-        duration: 400,
+        duration: 500,
         easing: 'easeInOutCubic',
       });
     } else if (isAnimatingOut) {
       animRef.current = anime({
-        targets: contentRef.current,
-        scale: [1, 0.05],
+        targets: containerRef.current,
+        scale: [1, 0.8],
         opacity: [1, 0],
-        duration: 400,
+        duration: 500,
         easing: 'easeInOutCubic',
         complete: () => {
           if (onOutComplete) onOutComplete();
@@ -44,193 +93,152 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       bgAnimRef.current = anime({
         targets: [overlayRef.current, bgRef.current],
         opacity: [1, 0],
-        duration: 400,
+        duration: 500,
         easing: 'easeInOutCubic',
       });
     }
-    return () => { 
-      if (animRef.current) animRef.current.pause(); 
+    return () => {
+      if (animRef.current) animRef.current.pause();
       if (bgAnimRef.current) bgAnimRef.current.pause();
     };
   }, [isAnimatingIn, isAnimatingOut, onOutComplete]);
 
-  return (
+  const handleCardClick = (cardId) => {
+    setExpandedCard(cardId);
+    if (expandAnimRef.current) expandAnimRef.current.pause();
+    
+    expandAnimRef.current = anime({
+      targets: '.expand-modal',
+      scale: [0.5, 1],
+      opacity: [0, 1],
+      duration: 400,
+      easing: 'easeOutCubic'
+    });
+  };
+
+  const handleCloseExpanded = () => {
+    if (expandAnimRef.current) expandAnimRef.current.pause();
+    
+    expandAnimRef.current = anime({
+      targets: '.expand-modal',
+      scale: [1, 0.5],
+      opacity: [1, 0],
+      duration: 300,
+      easing: 'easeInCubic',
+      complete: () => setExpandedCard(null)
+    });
+  };
+
+  const CardComponent = ({ card, isLarge }) => (
     <div
+      className={`card-item ${isLarge ? 'card-item-large' : 'card-item-small'}`}
+      onClick={() => handleCardClick(card.id)}
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        pointerEvents: isAnimatingOut ? 'none' : 'auto',
+        background: `linear-gradient(135deg, rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.1), rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.05))`,
+        border: `2px solid ${card.color}`,
+      }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        e.currentTarget.style.setProperty('--shine-x', `${x}%`);
+        e.currentTarget.style.setProperty('--shine-y', `${y}%`);
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.removeProperty('--shine-x');
+        e.currentTarget.style.removeProperty('--shine-y');
+        e.currentTarget.style.background = `linear-gradient(135deg, rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.1), rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.05))`;
+        e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      <div 
-        ref={overlayRef}
-        style={{
-           position: 'absolute',
-           inset: 0,
-           background: '#000000',
-           opacity: 0,
-        }}
-      />
-      <div 
-        ref={bgRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'radial-gradient(circle, #2a2a2a 1px, transparent 1px)',
-          backgroundSize: '20px 24px',
-          opacity: 0,
-          animation: 'moveBg 4s linear infinite',
-        }} 
-      />
-      <style>{`
-        @keyframes moveBg {
-          0% { background-position: 0 0; }
-          100% { background-position: -20px -24px; }
-        }
-      `}</style>
-      <button
-        onClick={onClose}
-        style={{
-          position: 'absolute',
-          top: 24,
-          right: 24,
-          background: 'rgba(10,10,10,0.85)',
-          border: '2px solid #ef4444',
-          borderRadius: '50%',
-          width: 48,
-          height: 48,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 101,
-        }}
-      >
+      <div className={`card-label ${isLarge ? 'card-label-large' : 'card-label-small'}`} style={{ color: card.color }}>
+        ◆ {card.title} ◆
+      </div>
+      <h2 className={`card-title ${isLarge ? 'card-title-large' : 'card-title-small'}`} style={{ textShadow: `0 0 20px ${card.color}80, 0 0 40px ${card.color}40` }}>
+        {card.subtitle}
+      </h2>
+      <div className={`card-divider ${isLarge ? 'card-divider-large' : 'card-divider-small'}`} style={{ background: `linear-gradient(90deg, transparent, ${card.color}, transparent)` }} />
+      <p className={`card-description ${isLarge ? 'card-description-large' : 'card-description-small'}`}>
+        {card.description}
+      </p>
+    </div>
+  )
+  const expandedCardData = cards.find(c => c.id === expandedCard);
+
+  return (
+    <div className={`about-overlay-wrapper ${isAnimatingOut ? 'no-pointer' : ''}`}>
+      <div ref={overlayRef} className="about-overlay-bg-black" />
+      <div ref={bgRef} className="about-overlay-bg-pattern" />
+      
+      <button onClick={onClose} className="about-close-button">
         <X style={{ width: 22, height: 22, color: '#f87171' }} />
       </button>
-      <div
-        ref={contentRef}
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          maxWidth: 700,
-          width: '90%',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          color: '#f5e6e6',
-          fontFamily: "'Segoe UI', sans-serif",
-          textAlign: 'center',
-          padding: '48px 40px',
-          border: '1px solid rgba(204,17,17,0.3)',
-          borderRadius: 4,
-          background: 'rgba(10,0,5,0.6)',
-          backdropFilter: 'blur(4px)',
-          transform: isAnimatingIn ? 'scale(0.05)' : 'scale(1)',
-        }}
-      >
-        <div style={{ fontSize: '10px', letterSpacing: '4px', textTransform: 'uppercase', color: '#cc2222', marginBottom: 12, fontWeight: 700 }}>
-          ◆ ABOUT ME ◆
-        </div>
-        <h1 style={{ fontSize: 36, fontWeight: 800, color: '#ffffff', marginBottom: 16, textShadow: '0 0 18px #cc1111, 0 0 40px #880000', letterSpacing: 1 }}>
-          redac1ed
-        </h1>
-        <div style={{ width: 60, height: 2, background: 'linear-gradient(90deg, transparent, #cc1111, transparent)', margin: '0 auto 24px' }} />
-        <p style={{ fontSize: 15, lineHeight: 1.85, color: '#c9a8a8', marginBottom: 20 }}>
-          A developer obsessed with crafting immersive web experiences — blending 3D graphics, animation, and clean code into something that feels alive.
-        </p>
-        <p style={{ fontSize: 14, lineHeight: 1.85, color: '#9a7878' }}>
-          Passionate about React, Three.js, and pushing the limits of what a browser can render.
-        </p>
 
-        {/* Anime toggle button */}
-        <div
-          style={{
-            marginTop: 32,
-            width: 200,
-            height: 60,
-            margin: '32px auto 0 auto',
-            background: 'linear-gradient(135deg, rgba(204,17,17,0.3), rgba(239,68,68,0.2))',
-            border: '2px solid #cc1111',
-            borderRadius: 8,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(204,17,17,0.5), rgba(239,68,68,0.4))';
-            e.currentTarget.style.boxShadow = '0 0 20px rgba(204,17,17,0.6)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(204,17,17,0.3), rgba(239,68,68,0.2))';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
-          onClick={() => setShowAnime(true)}
-        >
-          <div style={{
-            fontSize: 16,
-            fontWeight: 800,
-            color: '#006793',
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
-            fontStyle: 'italic',
-            letterSpacing: 2,
-          }}>
-            ▶ ANIME REELS
-          </div>
+      <div ref={containerRef} className="about-container hide-scrollbar">
+        <div className="about-grid">
+          {cards.map(card => (
+            <CardComponent
+              key={card.id}
+              card={card}
+              isLarge={card.size === 'large'}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Anime popup modal */}
-      {showAnime && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 200,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'rgba(0,0,0,0.7)',
-          }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAnime(false);
-          }}
-        >
-          <div style={{
-            position: 'relative',
-            width: '80vw',
-            maxWidth: 900,
-            border: '1px solid rgba(204,17,17,0.4)',
-            borderRadius: 12,
-            overflow: 'hidden',
-            boxShadow: '0 0 40px rgba(204,17,17,0.3)',
-          }}>
+      {expandedCard && (
+        <div className="expand-backdrop" onClick={(e) => {
+          if (e.target === e.currentTarget) handleCloseExpanded();
+        }}>
+          <div
+            className="expand-modal hide-scrollbar"
+            style={{
+              border: `2px solid ${expandedCardData.color}`,
+              boxShadow: `0 0 60px ${expandedCardData.color}40`,
+            }}
+          >
             <button
-              onClick={() => setShowAnime(false)}
+              onClick={handleCloseExpanded}
+              className="expand-close-button"
               style={{
-                position: 'absolute',
-                top: 12,
-                right: 12,
-                background: 'rgba(10,10,10,0.85)',
-                border: '2px solid #ef4444',
-                borderRadius: '50%',
-                width: 36,
-                height: 36,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                zIndex: 201,
+                border: `2px solid ${expandedCardData.color}`,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `${expandedCardData.color}20`;
+                e.currentTarget.style.boxShadow = `0 0 20px ${expandedCardData.color}60`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(10, 10, 10, 0.85)';
+                e.currentTarget.style.boxShadow = 'none';
               }}
             >
-              <X style={{ width: 18, height: 18, color: '#f87171' }} />
+              <X style={{ width: 20, height: 20, color: expandedCardData.color }} />
             </button>
-            <VideoCarousel active={showAnime} />
+
+            <div className="expand-content">
+              <div className="expand-label" style={{ color: expandedCardData.color }}>
+                ◆ {expandedCardData.title} ◆
+              </div>
+              <h1 className="expand-title" style={{ textShadow: `0 0 30px ${expandedCardData.color}80, 0 0 60px ${expandedCardData.color}40` }}>
+                {expandedCardData.subtitle}
+              </h1>
+              <div className="expand-divider" style={{ background: `linear-gradient(90deg, transparent, ${expandedCardData.color}, transparent)` }} />
+              
+              {expandedCardData.id === 'anime' ? (
+                <div className="expand-video-wrapper">
+                  <VideoCarousel active={expandedCard === 'anime'} />
+                </div>
+              ) : (
+                <>
+                  <p className="expand-description">
+                    {expandedCardData.description}
+                  </p>
+                  <p className="expand-full-content">
+                    {expandedCardData.fullContent}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
