@@ -25,6 +25,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
   const [displayFace, setDisplayFace] = useState(currentFace);
   const [typedTitle, setTypedTitle] = useState('');
   const [typedDesc, setTypedDesc] = useState('');
+  const [isHovered, setIsHovered] = useState(false);
   const innerDivRef = useRef();
   useEffect(() => {
     if (visible) {
@@ -64,6 +65,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
   if (!visible && !htmlVisible) return null;
   const currentPanel = PANELS[displayFace]; 
   const isClickable = displayFace === 0;
+  const isInteractive = Boolean(currentPanel.title);
   
   return (
     <div style={{
@@ -71,29 +73,34 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
       top: '50%',
       left: '50%',
       transform: 'translate(-50%, -50%)',
-      zIndex: 10,
-      pointerEvents: 'none',
+      zIndex: isHovered ? 9999 : 10,
+      pointerEvents: isInteractive ? 'auto' : 'none',
       opacity: htmlVisible ? 1 : 0, 
       transition: 'opacity 0.8s ease'
     }}>
       <div
           onClick={isClickable && currentPanel.title ? onAboutOpen : undefined}
+          onMouseEnter={isInteractive ? () => { 
+            setIsHovered(true);
+          } : undefined}
+          onMouseLeave={isInteractive ? () => { 
+            setIsHovered(false);
+          } : undefined}
           style={{
             width: '420px',
             padding: '20px 28px',
             color: '#f5e6e6',
             fontFamily: "'Segoe UI', sans-serif",
             textAlign: 'center',
-            pointerEvents: (isClickable && currentPanel.title) ? 'auto' : 'none',
+            pointerEvents: isInteractive ? 'auto' : 'none',
             cursor: (isClickable && currentPanel.title) ? 'pointer' : 'default',
             borderRadius: 4,
-            background: currentPanel.title ? 'rgba(10,0,5,0.6)' : 'transparent',
-            border: currentPanel.title ? '1px solid rgba(204,17,17,0.5)' : 'none',
+            background: isInteractive ? (isHovered ? 'rgba(204,17,17,0.2)' : 'rgba(10,0,5,0.6)') : 'transparent',
+            border: isInteractive ? '1px solid rgba(204,17,17,0.5)' : 'none',
             backdropFilter: 'blur(4px)',
-            transition: 'background 0.2s ease',
+            transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.2s ease',
+            transform: isHovered ? 'scale(1.4)' : 'scale(1)',
           }}
-          onMouseEnter={isClickable && currentPanel.title ? e => { e.currentTarget.style.background = 'rgba(204,17,17,0.2)'; } : undefined}
-          onMouseLeave={isClickable && currentPanel.title ? e => { e.currentTarget.style.background = 'rgba(10,0,5,0.6)'; } : undefined}
         >
           {currentPanel.title && (
             <>

@@ -11,7 +11,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   const bgAnimRef = useRef(null);
   const [expandedCard, setExpandedCard] = useState(null);
   const expandAnimRef = useRef(null);
-
   const cards = [
     {
       id: 'about',
@@ -64,7 +63,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     if (!containerRef.current || !overlayRef.current || !bgRef.current) return;
     if (animRef.current) animRef.current.pause();
     if (bgAnimRef.current) bgAnimRef.current.pause();
-
     if (isAnimatingIn) {
       animRef.current = anime({
         targets: containerRef.current,
@@ -105,8 +103,11 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
 
   const handleCardClick = (cardId) => {
     setExpandedCard(cardId);
+  };
+
+  useEffect(() => {
+    if (!expandedCard) return;
     if (expandAnimRef.current) expandAnimRef.current.pause();
-    
     expandAnimRef.current = anime({
       targets: '.expand-modal',
       scale: [0.5, 1],
@@ -114,11 +115,10 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       duration: 400,
       easing: 'easeOutCubic'
     });
-  };
+  }, [expandedCard]);
 
   const handleCloseExpanded = () => {
     if (expandAnimRef.current) expandAnimRef.current.pause();
-    
     expandAnimRef.current = anime({
       targets: '.expand-modal',
       scale: [1, 0.5],
@@ -128,41 +128,58 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       complete: () => setExpandedCard(null)
     });
   };
-
+  const r = (hex) => parseInt(hex.slice(1, 3), 16);
+  const g = (hex) => parseInt(hex.slice(3, 5), 16);
+  const b = (hex) => parseInt(hex.slice(5, 7), 16);
   const CardComponent = ({ card, isLarge }) => (
     <div
       className={`card-item ${isLarge ? 'card-item-large' : 'card-item-small'}`}
       onClick={() => handleCardClick(card.id)}
-      style={{
-        background: `linear-gradient(135deg, rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.1), rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.05))`,
-        border: `2px solid ${card.color}`,
-      }}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        e.currentTarget.style.setProperty('--shine-x', `${x}%`);
-        e.currentTarget.style.setProperty('--shine-y', `${y}%`);
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.removeProperty('--shine-x');
-        e.currentTarget.style.removeProperty('--shine-y');
-        e.currentTarget.style.background = `linear-gradient(135deg, rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.1), rgba(${parseInt(card.color.slice(1, 3), 16)}, ${parseInt(card.color.slice(3, 5), 16)}, ${parseInt(card.color.slice(5, 7), 16)}, 0.05))`;
-        e.currentTarget.style.boxShadow = 'none';
-      }}
     >
-      <div className={`card-label ${isLarge ? 'card-label-large' : 'card-label-small'}`} style={{ color: card.color }}>
-        ◆ {card.title} ◆
+      <div
+        className="card-inner"
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 100;
+          const y = ((e.clientY - rect.top) / rect.height) * 100;
+          e.currentTarget.style.setProperty('--shine-x', `${x}%`);
+          e.currentTarget.style.setProperty('--shine-y', `${y}%`);
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.removeProperty('--shine-x');
+          e.currentTarget.style.removeProperty('--shine-y');
+        }}
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          background: `linear-gradient(135deg, rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.1), rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.05))`,
+          border: `2px solid ${card.color}`,
+          padding: isLarge ? '24px 32px' : '16px 18px',
+          position: 'relative',
+          textAlign: 'center',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div className={`card-label ${isLarge ? 'card-label-large' : 'card-label-small'}`} style={{ color: card.color }}>
+          ◆ {card.title} ◆
+        </div>
+        <h2 className={`card-title ${isLarge ? 'card-title-large' : 'card-title-small'}`} style={{ textShadow: `0 0 20px ${card.color}80, 0 0 40px ${card.color}40` }}>
+          {card.subtitle}
+        </h2>
+        <div className={`card-divider ${isLarge ? 'card-divider-large' : 'card-divider-small'}`} style={{ background: `linear-gradient(90deg, transparent, ${card.color}, transparent)` }} />
+        <p className={`card-description ${isLarge ? 'card-description-large' : 'card-description-small'}`}>
+          {card.description}
+        </p>
       </div>
-      <h2 className={`card-title ${isLarge ? 'card-title-large' : 'card-title-small'}`} style={{ textShadow: `0 0 20px ${card.color}80, 0 0 40px ${card.color}40` }}>
-        {card.subtitle}
-      </h2>
-      <div className={`card-divider ${isLarge ? 'card-divider-large' : 'card-divider-small'}`} style={{ background: `linear-gradient(90deg, transparent, ${card.color}, transparent)` }} />
-      <p className={`card-description ${isLarge ? 'card-description-large' : 'card-description-small'}`}>
-        {card.description}
-      </p>
     </div>
-  )
+  );
+
   const expandedCardData = cards.find(c => c.id === expandedCard);
 
   return (
