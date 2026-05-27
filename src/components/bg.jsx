@@ -228,7 +228,8 @@ function WaterRipple({ active }) {
 }
 
 function DustParticles() {
-  const count = 10000;
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const count = isMobile ? 3000 : 10000;
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -433,13 +434,16 @@ function Ocean({ splashTrigger }) {
     }
   });
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const segments = isMobile ? 128 : 256;
+
   return (
     <mesh
       ref={meshRef}
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, OCEAN_Y, 0]}
     >
-      <planeGeometry args={[4000, 4000, 512, 512]} />
+      <planeGeometry args={[4000, 4000, segments, segments]} />
       <oceanMaterial
         ref={materialRef}
         transparent
@@ -617,7 +621,7 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
           opacity: 0,
         }}
       />
-      <Canvas camera={{ position: [0, 20, 90], fov: 10 }} style={{ width: '100vw', height: '100vh' }}>
+      <Canvas camera={{ position: [0, 20, 90], fov: 10 }} dpr={[1, 1.5]} style={{ width: '100vw', height: '100vh' }}>
         <SceneContent zoomed={zoomed} rotationTarget={rotationTarget} onRotationComplete={onRotationComplete} onAboutOpen={onAboutOpen} rushTarget={rushTarget} onRushComplete={onRushComplete} />
       </Canvas>
       <ActivePanelOverlay 
