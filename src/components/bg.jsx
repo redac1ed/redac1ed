@@ -1,13 +1,60 @@
 import React, { Suspense, useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { Canvas, useFrame, useThree, extend } from '@react-three/fiber';
-import { OrbitControls, useGLTF, shaderMaterial, Html } from '@react-three/drei';
+import { OrbitControls, useGLTF, shaderMaterial } from '@react-three/drei';
 import { oceanVertexShader, oceanFragmentShader, skyVertexShader, skyFragmentShader } from './shaders';
-import Panel from './panels';
 import * as THREE from 'three';
 import anime from 'animejs';
 import ActivePanelOverlay from './panels';
 
 const OCEAN_Y = -6;
+
+const PERF_TIER = (() => {
+  if (typeof window === 'undefined') return 'high';
+  const ua = navigator.userAgent || '';
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i.test(ua);
+  const cores = navigator.hardwareConcurrency || 4;
+  const mem = navigator.deviceMemory || 4;
+  const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 768;
+  if (isMobile || smallScreen || cores <= 4 || mem <= 3) return 'low';
+  if (cores <= 6 || mem <= 6) return 'mid';
+  return 'high';
+})();
+
+const IS_LOW = PERF_TIER === 'low';
+const IS_MID = PERF_TIER === 'mid';
+
+const OCEAN_SEGMENTS = IS_LOW ? 96 : IS_MID ? 192 : 512;
+const OCEAN_SIZE = IS_LOW ? 1500 : IS_MID ? 2500 : 4000;
+const DUST_COUNT = IS_LOW ? 1200 : IS_MID ? 4000 : 10000;
+const SPLASH_COUNT = IS_LOW ? 150 : IS_MID ? 350 : 600;
+const SKY_SEGMENTS = IS_LOW ? 24 : IS_MID ? 40 : 64;
+const MAX_DPR = IS_LOW ? 1 : IS_MID ? 1.5 : 2;
+const RIPPLE_SEGMENTS = IS_LOW ? 24 : 64;
+
+const SPLASH_VERTEX_SHADER = `
+attribute float size;
+attribute float opacity;
+varying float vOpacity;
+void main() {
+  vOpacity = opacity;
+  vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = size * (200.0 / -mvPos.z);
+  gl_Position = projectionMatrix * mvPos;
+}`;
+
+const SPLASH_FRAGMENT_SHADER = `
+varying float vOpacity;
+void main() {
+  float d = length(gl_PointCoord - vec2(0.5));
+  if (d > 0.5) discard;
+  float alpha = smoothstep(0.5, 0.1, d) * vOpacity;
+  gl_FragColor = vec4(0.6, 0.85, 1.0, alpha);
+}`;
+
+const _vec3A = new THREE.Vector3();
+const _vec3B = new THREE.Vector3();
+const _spherical = new THREE.Spherical();
+const _splashCenter = new THREE.Vector2(0, 0);
 
 function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
   const { scene } = useGLTF('/bg-model/source/Malevolent_shrine_webp_draco.glb');
@@ -17,11 +64,32 @@ function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
   const hasCrossed = useRef(false);
   const scaleAnimRef = useRef(null);
   const riseAnimRef = useRef(null);
+
   const offset = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene);
     const center = new THREE.Vector3();
     box.getCenter(center);
     return center.negate();
+  }, [scene]);
+
+  useMemo(() => {
+    scene.traverse((obj) => {
+      if (obj.isMesh) {
+        obj.castShadow = false;
+        obj.receiveShadow = false;
+        obj.frustumCulled = true;
+        const mat = obj.material;
+        if (mat) {
+          if ('flatShading' in mat) mat.flatShading = false;
+          if (IS_LOW && mat.map) {
+            mat.map.anisotropy = 1;
+            mat.map.generateMipmaps = true;
+            mat.map.minFilter = THREE.LinearMipmapNearestFilter;
+          }
+          mat.needsUpdate = true;
+        }
+      }
+    });
   }, [scene]);
 
   useEffect(() => {
@@ -30,6 +98,7 @@ function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
     isRising.current = true;
     hasCrossed.current = false;
     const finalY = offset.y;
+    let rumbleTick = 0;
     riseAnimRef.current = anime({
       targets: modelRef.current.position,
       y: finalY,
@@ -37,9 +106,12 @@ function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
       easing: 'easeOutCubic',
       update: () => {
         if (!modelRef.current || !isRising.current) return;
-        const rumble = 0.15;
-        modelRef.current.position.x = offset.x + (Math.random() - 0.5) * rumble;
-        modelRef.current.position.z = offset.z + (Math.random() - 0.5) * rumble;
+        rumbleTick = (rumbleTick + 1) % 3;
+        if (rumbleTick === 0) {
+          const rumble = 0.15;
+          modelRef.current.position.x = offset.x + (Math.random() - 0.5) * rumble;
+          modelRef.current.position.z = offset.z + (Math.random() - 0.5) * rumble;
+        }
         if (!hasCrossed.current && modelRef.current.position.y >= OCEAN_Y) {
           hasCrossed.current = true;
           if (onCrossWater) onCrossWater();
@@ -54,7 +126,7 @@ function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
     return () => {
       if (riseAnimRef.current) riseAnimRef.current.pause();
     };
-  }, [offset, onCrossWater]);
+  }, [offset, onCrossWater, onShrineArrived]);
 
   useEffect(() => {
     if (!modelRef.current) return;
@@ -76,36 +148,49 @@ function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
 }
 
 function SplashParticles({ active }) {
-  const count = 600;
+  const count = SPLASH_COUNT;
   const pointsRef = useRef();
-  const velocities = useRef([]);
-  const lifetimes = useRef([]);
+  const velocities = useRef(null);
+  const lifetimes = useRef(null);
   const startTime = useRef(0);
   const phase = useRef('idle');
-  const positions = useMemo(() => new Float32Array(count * 3), []);
-  const sizes = useMemo(() => new Float32Array(count), []);
-  const opacities = useMemo(() => new Float32Array(count), []);
+
+  const { positions, sizes, opacities } = useMemo(() => ({
+    positions: new Float32Array(count * 3),
+    sizes: new Float32Array(count),
+    opacities: new Float32Array(count),
+  }), [count]);
+
+  const baseSizes = useMemo(() => new Float32Array(count), [count]);
+
   const initParticles = useCallback(() => {
-    velocities.current = [];
-    lifetimes.current = [];
+    if (!velocities.current) {
+      velocities.current = new Float32Array(count * 3);
+      lifetimes.current = new Float32Array(count);
+    }
+    const vel = velocities.current;
+    const life = lifetimes.current;
     for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
       const angle = Math.random() * Math.PI * 2;
+      const ca = Math.cos(angle);
+      const sa = Math.sin(angle);
       const speed = 2 + Math.random() * 8;
       const upSpeed = 3 + Math.random() * 12;
       const radialOffset = Math.random() * 3;
-      positions[i * 3] = Math.cos(angle) * radialOffset;
-      positions[i * 3 + 1] = OCEAN_Y;
-      positions[i * 3 + 2] = Math.sin(angle) * radialOffset;
-      velocities.current.push({
-        x: Math.cos(angle) * speed,
-        y: upSpeed,
-        z: Math.sin(angle) * speed,
-      });
-      lifetimes.current.push(0.8 + Math.random() * 1.5);
-      sizes[i] = 0.1 + Math.random() * 0.3;
+      positions[i3] = ca * radialOffset;
+      positions[i3 + 1] = OCEAN_Y;
+      positions[i3 + 2] = sa * radialOffset;
+      vel[i3] = ca * speed;
+      vel[i3 + 1] = upSpeed;
+      vel[i3 + 2] = sa * speed;
+      life[i] = 0.8 + Math.random() * 1.5;
+      const sz = 0.1 + Math.random() * 0.3;
+      baseSizes[i] = sz;
+      sizes[i] = sz;
       opacities[i] = 1.0;
     }
-  }, [positions, sizes, opacities]);
+  }, [count, positions, sizes, opacities, baseSizes]);
 
   useEffect(() => {
     if (active) {
@@ -115,76 +200,61 @@ function SplashParticles({ active }) {
     }
   }, [active, initParticles]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (phase.current === 'idle' || !pointsRef.current) return;
     startTime.current += delta;
     const elapsed = startTime.current;
+    const vel = velocities.current;
+    const life = lifetimes.current;
     let allDead = true;
     const posArr = pointsRef.current.geometry.attributes.position.array;
     const sizeArr = pointsRef.current.geometry.attributes.size.array;
     const opArr = pointsRef.current.geometry.attributes.opacity.array;
+    const gravity = 15 * delta;
     for (let i = 0; i < count; i++) {
-      const life = lifetimes.current[i];
-      if (elapsed > life) {
+      const lifeI = life[i];
+      if (elapsed > lifeI) {
         opArr[i] = 0;
         continue;
       }
       allDead = false;
-      const t = elapsed / life;
-      const vel = velocities.current[i];
-      posArr[i * 3] += vel.x * delta;
-      posArr[i * 3 + 1] += vel.y * delta;
-      posArr[i * 3 + 2] += vel.z * delta;
-      vel.y -= 15 * delta;
-      if (posArr[i * 3 + 1] < OCEAN_Y && vel.y < 0) {
-        posArr[i * 3 + 1] = OCEAN_Y;
-        vel.y *= -0.3;
-        vel.x *= 0.5;
-        vel.z *= 0.5;
+      const i3 = i * 3;
+      const t = elapsed / lifeI;
+      posArr[i3] += vel[i3] * delta;
+      posArr[i3 + 1] += vel[i3 + 1] * delta;
+      posArr[i3 + 2] += vel[i3 + 2] * delta;
+      vel[i3 + 1] -= gravity;
+      if (posArr[i3 + 1] < OCEAN_Y && vel[i3 + 1] < 0) {
+        posArr[i3 + 1] = OCEAN_Y;
+        vel[i3 + 1] *= -0.3;
+        vel[i3] *= 0.5;
+        vel[i3 + 2] *= 0.5;
       }
       opArr[i] = 1.0 - t * t;
-      sizeArr[i] = sizes[i] * (1.0 - t * 0.5);
+      sizeArr[i] = baseSizes[i] * (1.0 - t * 0.5);
     }
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
-    pointsRef.current.geometry.attributes.size.needsUpdate = true;
-    pointsRef.current.geometry.attributes.opacity.needsUpdate = true;
-    if (allDead) {
-      phase.current = 'idle';
-    }
+    const attrs = pointsRef.current.geometry.attributes;
+    attrs.position.needsUpdate = true;
+    attrs.size.needsUpdate = true;
+    attrs.opacity.needsUpdate = true;
+    if (allDead) phase.current = 'idle';
   });
+
   if (!active && phase.current === 'idle') return null;
 
   return (
-    <points ref={pointsRef}>
+    <points ref={pointsRef} frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
-        <bufferAttribute attach="attributes-size" count={count} array={sizes} itemSize={1} />
-        <bufferAttribute attach="attributes-opacity" count={count} array={opacities} itemSize={1} />
+        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} usage={THREE.DynamicDrawUsage} />
+        <bufferAttribute attach="attributes-size" count={count} array={sizes} itemSize={1} usage={THREE.DynamicDrawUsage} />
+        <bufferAttribute attach="attributes-opacity" count={count} array={opacities} itemSize={1} usage={THREE.DynamicDrawUsage} />
       </bufferGeometry>
       <shaderMaterial
         transparent
         depthWrite={false}
         blending={THREE.AdditiveBlending}
-        vertexShader={`
-          attribute float size;
-          attribute float opacity;
-          varying float vOpacity;
-          void main() {
-            vOpacity = opacity;
-            vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = size * (200.0 / -mvPos.z);
-            gl_Position = projectionMatrix * mvPos;
-          }
-        `}
-        fragmentShader={`
-          varying float vOpacity;
-          void main() {
-            float d = length(gl_PointCoord - vec2(0.5));
-            if (d > 0.5) discard;
-            float alpha = smoothstep(0.5, 0.1, d) * vOpacity;
-            gl_FragColor = vec4(0.6, 0.85, 1.0, alpha);
-          }
-        `}
+        vertexShader={SPLASH_VERTEX_SHADER}
+        fragmentShader={SPLASH_FRAGMENT_SHADER}
       />
     </points>
   );
@@ -220,48 +290,64 @@ function WaterRipple({ active }) {
   }, [active]);
 
   return (
-    <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, OCEAN_Y + 0.1, 0]} visible={false}>
-      <ringGeometry args={[0.8, 1.0, 64]} />
+    <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, OCEAN_Y + 0.1, 0]} visible={false} frustumCulled={false}>
+      <ringGeometry args={[0.8, 1.0, RIPPLE_SEGMENTS]} />
       <meshBasicMaterial color="#4da6ff" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
     </mesh>
   );
 }
 
 function DustParticles() {
-  const count = 10000;
-  const positions = useMemo(() => {
+  const count = DUST_COUNT;
+  const { positions, phases } = useMemo(() => {
     const pos = new Float32Array(count * 3);
+    const ph = new Float32Array(count * 2);
     for (let i = 0; i < count; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 80;
       pos[i * 3 + 1] = (Math.random() - 0.5) * 60 - 30;
       pos[i * 3 + 2] = (Math.random() - 0.5) * 80;
+      const a = Math.random() * Math.PI * 2;
+      ph[i * 2] = Math.cos(a);
+      ph[i * 2 + 1] = Math.sin(a);
     }
-    return pos;
-  }, []);
+    return { positions: pos, phases: ph };
+  }, [count]);
+
   const pointsRef = useRef();
+  const frameSkip = useRef(0);
+
   useFrame((state, delta) => {
-    if (pointsRef.current) {
-      const positions = pointsRef.current.geometry.attributes.position.array;
-      for (let i = 0; i < count; i++) {
-        positions[i * 3 + 1] += delta * 8;
-        positions[i * 3] += Math.sin(state.clock.elapsedTime * 2 + i) * delta * 1.5;
-        positions[i * 3 + 2] += Math.cos(state.clock.elapsedTime * 2 + i) * delta * 1.5;
-        if (positions[i * 3 + 1] > 40) {
-          positions[i * 3 + 1] = -40;
-        }
-      }
-      pointsRef.current.geometry.attributes.position.needsUpdate = true;
+    if (!pointsRef.current) return;
+    if (IS_LOW) {
+      frameSkip.current = (frameSkip.current + 1) % 2;
+      if (frameSkip.current !== 0) return;
     }
+    const dt = IS_LOW ? delta * 2 : delta;
+    const t = state.clock.elapsedTime;
+    const swayX = Math.sin(t * 2) * dt * 1.5;
+    const swayZ = Math.cos(t * 2) * dt * 1.5;
+    const pos = pointsRef.current.geometry.attributes.position.array;
+    const upY = dt * 8;
+    for (let i = 0; i < count; i++) {
+      const i3 = i * 3;
+      const i2 = i * 2;
+      pos[i3 + 1] += upY;
+      pos[i3] += swayX * phases[i2];
+      pos[i3 + 2] += swayZ * phases[i2 + 1];
+      if (pos[i3 + 1] > 40) pos[i3 + 1] = -40;
+    }
+    pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
   return (
-    <points ref={pointsRef}>
+    <points ref={pointsRef} frustumCulled={false}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
           count={count}
           array={positions}
           itemSize={3}
+          usage={THREE.DynamicDrawUsage}
         />
       </bufferGeometry>
       <pointsMaterial
@@ -296,6 +382,7 @@ extend({ SkyMaterial });
 function BackgroundSphere() {
   const materialRef = useRef();
   const animRefs = useRef([]);
+  const flickerTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!materialRef.current) return;
@@ -324,20 +411,21 @@ function BackgroundSphere() {
     const pulseAnim = anime({
       targets: pulseState,
       value: 1,
-      duration: 12500, 
+      duration: 12500,
       direction: 'alternate',
       loop: true,
       easing: 'easeInOutSine',
       update: () => { mat.uPulse = pulseState.value; },
     });
     let cancelled = false;
+    const flickerState = { value: 0 };
     const scheduleFlicker = () => {
       if (cancelled) return;
       const delay = 1500 + Math.random() * 4000;
-      setTimeout(() => {
+      flickerTimeoutRef.current = setTimeout(() => {
         if (cancelled || !materialRef.current) return;
         materialRef.current.uFlickerPos = Math.random();
-        const flickerState = { value: 1 };
+        flickerState.value = 1;
         anime({
           targets: flickerState,
           value: 0,
@@ -357,13 +445,14 @@ function BackgroundSphere() {
     animRefs.current = [fadeAnim, timeAnim, pulseAnim];
     return () => {
       cancelled = true;
+      if (flickerTimeoutRef.current) clearTimeout(flickerTimeoutRef.current);
       animRefs.current.forEach(a => a && a.pause());
     };
   }, []);
 
   return (
-    <mesh position={[0, 0, 0]}>
-      <sphereGeometry args={[200, 64, 64]} />
+    <mesh position={[0, 0, 0]} frustumCulled={false}>
+      <sphereGeometry args={[200, SKY_SEGMENTS, SKY_SEGMENTS]} />
       <skyMaterial
         ref={materialRef}
         side={THREE.BackSide}
@@ -402,6 +491,8 @@ function Ocean({ splashTrigger }) {
   const splashApplied = useRef(0);
   const timeStateRef = useRef({ value: 0 });
   const timeAnimRef = useRef(null);
+  const lastCamX = useRef(0);
+  const lastCamZ = useRef(0);
   const { camera } = useThree();
 
   useEffect(() => {
@@ -410,7 +501,7 @@ function Ocean({ splashTrigger }) {
     timeAnimRef.current = anime({
       targets: timeStateRef.current,
       value: 100000,
-      duration: 100000 * 2500, 
+      duration: 100000 * 2500,
       easing: 'linear',
       update: () => {
         if (materialRef.current) materialRef.current.uTime = timeStateRef.current.value;
@@ -423,13 +514,18 @@ function Ocean({ splashTrigger }) {
     if (splashTrigger <= splashApplied.current || !materialRef.current) return;
     splashApplied.current = splashTrigger;
     materialRef.current.uSplashTime = timeStateRef.current.value;
-    materialRef.current.uSplashCenter = new THREE.Vector2(0, 0);
+    materialRef.current.uSplashCenter.copy(_splashCenter);
   }, [splashTrigger]);
 
   useFrame(() => {
-    if (meshRef.current) {
-      meshRef.current.position.x = camera.position.x;
-      meshRef.current.position.z = camera.position.z;
+    if (!meshRef.current) return;
+    const cx = camera.position.x;
+    const cz = camera.position.z;
+    if (cx !== lastCamX.current || cz !== lastCamZ.current) {
+      meshRef.current.position.x = cx;
+      meshRef.current.position.z = cz;
+      lastCamX.current = cx;
+      lastCamZ.current = cz;
     }
   });
 
@@ -438,12 +534,13 @@ function Ocean({ splashTrigger }) {
       ref={meshRef}
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, OCEAN_Y, 0]}
+      frustumCulled={false}
     >
-      <planeGeometry args={[4000, 4000, 512, 512]} />
+      <planeGeometry args={[OCEAN_SIZE, OCEAN_SIZE, OCEAN_SEGMENTS, OCEAN_SEGMENTS]} />
       <oceanMaterial
         ref={materialRef}
         transparent
-        side={THREE.DoubleSide}
+        side={THREE.FrontSide}
         depthWrite={true}
         uFogNear={60}
         uFogFar={260}
@@ -459,7 +556,6 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
   const animRef = useRef(null);
   const rotationAnimRef = useRef(null);
   const rushAnimRef = useRef(null);
-  const midpointCalledRef = useRef(false);
 
   useEffect(() => {
     if (!controlsRef.current) return;
@@ -471,13 +567,14 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
       duration: 1200,
       easing: 'easeInOutCubic',
       update: () => {
-        if (!controlsRef.current) return;
-        controlsRef.current.target.y = tweenStateRef.current.targetY;
-        const direction = camera.position.clone().sub(controlsRef.current.target).normalize();
-        camera.position.copy(controlsRef.current.target).add(direction.multiplyScalar(tweenStateRef.current.distance));
-        controlsRef.current.minDistance = tweenStateRef.current.distance;
-        controlsRef.current.maxDistance = tweenStateRef.current.distance;
-        controlsRef.current.update();
+        const ctrl = controlsRef.current;
+        if (!ctrl) return;
+        ctrl.target.y = tweenStateRef.current.targetY;
+        _vec3A.copy(camera.position).sub(ctrl.target).normalize();
+        camera.position.copy(ctrl.target).addScaledVector(_vec3A, tweenStateRef.current.distance);
+        ctrl.minDistance = tweenStateRef.current.distance;
+        ctrl.maxDistance = tweenStateRef.current.distance;
+        ctrl.update();
       },
     });
     return () => { if (animRef.current) animRef.current.pause(); };
@@ -487,7 +584,7 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
     if (rotationTarget === null || !controlsRef.current) return;
     if (rotationAnimRef.current) rotationAnimRef.current.pause();
     const startAngle = controlsRef.current.getAzimuthalAngle();
-    const delta = rotationTarget * (Math.PI / 2); 
+    const delta = rotationTarget * (Math.PI / 2);
     const endAngle = startAngle + delta;
     const rotationState = { value: startAngle };
     rotationAnimRef.current = anime({
@@ -496,12 +593,14 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
       duration: 800,
       easing: 'easeInOutCubic',
       update: () => {
-        if (!controlsRef.current) return;
-        const spherical = new THREE.Spherical();
-        spherical.setFromVector3(camera.position.clone().sub(controlsRef.current.target));
-        spherical.theta = rotationState.value;
-        camera.position.copy(controlsRef.current.target).add(new THREE.Vector3().setFromSpherical(spherical));
-        controlsRef.current.update();
+        const ctrl = controlsRef.current;
+        if (!ctrl) return;
+        _vec3A.copy(camera.position).sub(ctrl.target);
+        _spherical.setFromVector3(_vec3A);
+        _spherical.theta = rotationState.value;
+        _vec3B.setFromSpherical(_spherical);
+        camera.position.copy(ctrl.target).add(_vec3B);
+        ctrl.update();
       },
       complete: () => {
         if (onRotationComplete) onRotationComplete();
@@ -513,11 +612,9 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
   useEffect(() => {
     if (!rushTarget || !controlsRef.current) return;
     if (rushAnimRef.current) rushAnimRef.current.pause();
-
     const isEntering = rushTarget.type === 'in';
     const startDistance = isEntering ? 90 : 15;
     const endDistance = isEntering ? 15 : 90;
-
     const rushState = { distance: startDistance };
     rushAnimRef.current = anime({
       targets: rushState,
@@ -525,13 +622,14 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
       duration: 400,
       easing: 'easeInOutCubic',
       update: () => {
-        if (!controlsRef.current || !camera) return;
-        controlsRef.current.target.y = 0;
-        const direction = camera.position.clone().sub(controlsRef.current.target).normalize();
-        camera.position.copy(controlsRef.current.target).add(direction.multiplyScalar(rushState.distance));
-        controlsRef.current.minDistance = rushState.distance;
-        controlsRef.current.maxDistance = rushState.distance;
-        controlsRef.current.update();
+        const ctrl = controlsRef.current;
+        if (!ctrl || !camera) return;
+        ctrl.target.y = 0;
+        _vec3A.copy(camera.position).sub(ctrl.target).normalize();
+        camera.position.copy(ctrl.target).addScaledVector(_vec3A, rushState.distance);
+        ctrl.minDistance = rushState.distance;
+        ctrl.maxDistance = rushState.distance;
+        ctrl.update();
       },
       complete: () => {
         if (isEntering && onRushComplete) onRushComplete();
@@ -553,17 +651,16 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
   );
 }
 
-function SceneContent({ zoomed, rotationTarget, onRotationComplete, onAboutOpen, rushTarget, onRushComplete }) {
+function SceneContent({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRushComplete }) {
   const [splashActive, setSplashActive] = useState(false);
   const [splashTrigger, setSplashTrigger] = useState(0);
-  const [shrineArrived, setShrineArrived] = useState(false);
+
   const handleCrossWater = useCallback(() => {
     setSplashActive(true);
     setSplashTrigger(prev => prev + 1);
   }, []);
-  const handleShrineArrived = useCallback(() => {
-    setShrineArrived(true);
-  }, []);
+
+  const handleShrineArrived = useCallback(() => {}, []);
 
   return (
     <>
@@ -585,45 +682,72 @@ function SceneContent({ zoomed, rotationTarget, onRotationComplete, onAboutOpen,
   );
 }
 
+const CANVAS_GL = {
+  antialias: !IS_LOW,
+  powerPreference: 'high-performance',
+  alpha: false,
+  stencil: false,
+  depth: true,
+};
+
+const CANVAS_PERFORMANCE = { min: 0.5 };
+const CANVAS_DPR = [1, MAX_DPR];
+const CANVAS_CAMERA = { position: [0, 20, 90], fov: 10 };
+
+const ROOT_STYLE = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 0,
+  backgroundColor: '#000000',
+  width: '100vw',
+  height: '100vh',
+};
+
+const GRADIENT_STYLE = {
+  position: 'absolute',
+  inset: 0,
+  background: 'linear-gradient(to bottom, #2a0306, #1a0205, #050102)',
+  opacity: 0,
+};
+
+const CANVAS_STYLE = { width: '100vw', height: '100vh' };
+
 export default function AnimeBackground({ zoomed, rotationTarget, currentFace, onRotationComplete, onAboutOpen, rushTarget, onRushComplete }) {
   const bgRef = useRef();
   useEffect(() => {
-    if (bgRef.current) {
-      anime({
-        targets: bgRef.current,
-        opacity: [0, 1],
-        duration: 4000,
-        easing: 'easeInOutQuad',
-        delay: 1000
-      });
-    }
+    if (!bgRef.current) return;
+    const a = anime({
+      targets: bgRef.current,
+      opacity: [0, 1],
+      duration: 4000,
+      easing: 'easeInOutQuad',
+      delay: 1000,
+    });
+    return () => { if (a) a.pause(); };
   }, []);
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 0,
-      backgroundColor: '#000000',
-      width: '100vw',
-      height: '100vh',
-    }}>
-      <div
-        ref={bgRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(to bottom, #2a0306, #1a0205, #050102)',
-          opacity: 0,
-        }}
-      />
-      <Canvas camera={{ position: [0, 20, 90], fov: 10 }} style={{ width: '100vw', height: '100vh' }}>
-        <SceneContent zoomed={zoomed} rotationTarget={rotationTarget} onRotationComplete={onRotationComplete} onAboutOpen={onAboutOpen} rushTarget={rushTarget} onRushComplete={onRushComplete} />
+    <div style={ROOT_STYLE}>
+      <div ref={bgRef} style={GRADIENT_STYLE} />
+      <Canvas
+        camera={CANVAS_CAMERA}
+        style={CANVAS_STYLE}
+        dpr={CANVAS_DPR}
+        gl={CANVAS_GL}
+        performance={CANVAS_PERFORMANCE}
+      >
+        <SceneContent
+          zoomed={zoomed}
+          rotationTarget={rotationTarget}
+          onRotationComplete={onRotationComplete}
+          rushTarget={rushTarget}
+          onRushComplete={onRushComplete}
+        />
       </Canvas>
-      <ActivePanelOverlay 
-         currentFace={currentFace} 
-         visible={true} 
-         onAboutOpen={onAboutOpen} 
+      <ActivePanelOverlay
+        currentFace={currentFace}
+        visible={true}
+        onAboutOpen={onAboutOpen}
       />
     </div>
   );

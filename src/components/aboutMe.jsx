@@ -10,52 +10,57 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   const animRef = useRef(null);
   const bgAnimRef = useRef(null);
   const [expandedCard, setExpandedCard] = useState(null);
+  const [originRect, setOriginRect] = useState(null);
   const expandAnimRef = useRef(null);
+  const expandBackdropRef = useRef(null);
+  const expandModalRef = useRef(null);
   const cards = [
     {
       id: 'about',
       title: 'About Me',
       subtitle: 'redac1ed',
-      description: 'A developer obsessed with crafting immersive web experiences — blending 3D graphics, animation, and clean code into something that feels alive.',
+      description: 'Hear out my story and how I became a teenage web developer!',
       fullContent: 'Passionate about React, Three.js, and pushing the limits of what a browser can render.',
-      size: 'large',
-      color: '#cc1111'
+      color: '#cc1111',
+      bgImage: '/sukuna.png',
+      slot: 'topLeft',
     },
     {
       id: 'anime',
       title: 'Anime',
-      subtitle: 'REELS',
-      description: 'Creative video projects and animations',
-      fullContent: 'Explore my anime and animation work',
-      size: 'small',
-      color: '#006793'
+      subtitle: 'Animes',
+      description: 'My top anime picks that I love!',
+      fullContent: 'My top anime picks that I love!',
+      color: '#006793',
+      slot: 'midLeft',
     },
     {
       id: 'likes',
-      title: 'What I Like',
-      subtitle: '♡',
+      title: 'Things I Like',
+      subtitle: 'Things I Like',
       description: 'Things that inspire me',
       fullContent: 'My interests and passions',
-      size: 'small',
-      color: '#cc1111'
+      color: '#cc1111',
+      slot: 'topRight',
     },
     {
       id: 'games',
       title: 'Games',
-      subtitle: '◆',
-      description: 'Gaming and interactive experiences',
+      subtitle: 'Games I Love',
+      description: 'The games I (sometimes) play!',
       fullContent: 'My favorite games and projects',
-      size: 'small',
-      color: '#1a7a5c'
+      color: '#1a7a5c',
+      bgImage: '/mc.png',
+      slot: 'bottomLeft',
     },
     {
       id: 'other',
       title: 'Other',
-      subtitle: '✦',
+      subtitle: 'Other stuff',
       description: 'More about me',
       fullContent: 'Additional interests and hobbies',
-      size: 'small',
-      color: '#7a3a1a'
+      color: '#7a3a1a',
+      slot: 'bottomRight',
     }
   ];
 
@@ -101,113 +106,234 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     };
   }, [isAnimatingIn, isAnimatingOut, onOutComplete]);
 
-  const handleCardClick = (cardId) => {
+  const handleCardClick = (cardId, e) => {
+    const cardEl = e.currentTarget;
+    const rect = cardEl.getBoundingClientRect();
+    setOriginRect({
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      cardEl,
+    });
+    cardEl.style.visibility = 'hidden';
     setExpandedCard(cardId);
   };
 
   useEffect(() => {
-    if (!expandedCard) return;
+    if (!expandedCard || !originRect) return;
+    const modal = expandModalRef.current;
+    const backdrop = expandBackdropRef.current;
+    if (!modal || !backdrop) return;
     if (expandAnimRef.current) expandAnimRef.current.pause();
-    expandAnimRef.current = anime({
-      targets: '.expand-modal',
-      scale: [0.5, 1],
-      opacity: [0, 1],
-      duration: 400,
-      easing: 'easeOutCubic'
+
+    const finalRect = modal.getBoundingClientRect();
+    const finalLeft = finalRect.left;
+    const finalTop = finalRect.top;
+    const finalWidth = finalRect.width;
+    const finalHeight = finalRect.height;
+
+    Object.assign(modal.style, {
+      position: 'fixed',
+      margin: '0',
+      left: `${originRect.left}px`,
+      top: `${originRect.top}px`,
+      width: `${originRect.width}px`,
+      height: `${originRect.height}px`,
+      maxWidth: 'none',
+      maxHeight: 'none',
+      padding: '0px',
+      opacity: '1',
+      overflow: 'hidden',
+      zIndex: '201',
     });
-  }, [expandedCard]);
+
+    anime({
+      targets: backdrop,
+      backgroundColor: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)'],
+      duration: 800,
+      easing: 'easeOutQuart',
+    });
+
+    expandAnimRef.current = anime({
+      targets: modal,
+      left: [originRect.left, finalLeft],
+      top: [originRect.top, finalTop],
+      width: [originRect.width, finalWidth],
+      height: [originRect.height, finalHeight],
+      padding: ['0px', '40px'],
+      duration: 850,
+      easing: 'cubicBezier(0.16, 1, 0.3, 1)',
+      complete: () => {
+        modal.style.overflow = 'auto';
+      },
+    });
+    const content = modal.querySelector('.expand-content');
+    if (content) {
+      content.style.opacity = '0';
+      anime({
+        targets: content,
+        opacity: [0, 1],
+        translateY: [12, 0],
+        duration: 600,
+        delay: 350,
+        easing: 'cubicBezier(0.22, 1, 0.36, 1)',
+      });
+    }
+  }, [expandedCard, originRect]);
 
   const handleCloseExpanded = () => {
+    const modal = expandModalRef.current;
+    const backdrop = expandBackdropRef.current;
+    if (!modal || !originRect) {
+      if (originRect?.cardEl) originRect.cardEl.style.visibility = '';
+      setExpandedCard(null);
+      setOriginRect(null);
+      return;
+    }
     if (expandAnimRef.current) expandAnimRef.current.pause();
+
+    const currentRect = modal.getBoundingClientRect();
+    Object.assign(modal.style, {
+      position: 'fixed',
+      margin: '0',
+      left: `${currentRect.left}px`,
+      top: `${currentRect.top}px`,
+      width: `${currentRect.width}px`,
+      height: `${currentRect.height}px`,
+      maxWidth: 'none',
+      maxHeight: 'none',
+      overflow: 'hidden',
+    });
+
+    const content = modal.querySelector('.expand-content');
+    if (content) {
+      anime({
+        targets: content,
+        opacity: [1, 0],
+        translateY: [0, 8],
+        duration: 180,
+        easing: 'easeInQuad',
+      });
+    }
+    if (backdrop) {
+      anime({
+        targets: backdrop,
+        backgroundColor: ['rgba(0,0,0,0.8)', 'rgba(0,0,0,0)'],
+        duration: 450,
+        easing: 'easeInQuad',
+      });
+    }
+
     expandAnimRef.current = anime({
-      targets: '.expand-modal',
-      scale: [1, 0.5],
-      opacity: [1, 0],
-      duration: 300,
-      easing: 'easeInCubic',
-      complete: () => setExpandedCard(null)
+      targets: modal,
+      left: [currentRect.left, originRect.left],
+      top: [currentRect.top, originRect.top],
+      width: [currentRect.width, originRect.width],
+      height: [currentRect.height, originRect.height],
+      padding: ['40px', '0px'],
+      duration: 450,
+      easing: 'cubicBezier(0.5, 0, 0.75, 0)',
+      complete: () => {
+        if (originRect.cardEl) originRect.cardEl.style.visibility = '';
+        setExpandedCard(null);
+        setOriginRect(null);
+      },
     });
   };
   const r = (hex) => parseInt(hex.slice(1, 3), 16);
   const g = (hex) => parseInt(hex.slice(3, 5), 16);
   const b = (hex) => parseInt(hex.slice(5, 7), 16);
-  const CardComponent = ({ card, isLarge }) => (
-    <div
-      className={`card-item ${isLarge ? 'card-item-large' : 'card-item-small'}`}
-      onClick={() => handleCardClick(card.id)}
-    >
+
+  const renderCard = (card) => {
+    const hasBg = Boolean(card.bgImage);
+    return (
       <div
-        className="card-inner"
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width) * 100;
-          const y = ((e.clientY - rect.top) / rect.height) * 100;
-          e.currentTarget.style.setProperty('--shine-x', `${x}%`);
-          e.currentTarget.style.setProperty('--shine-y', `${y}%`);
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.removeProperty('--shine-x');
-          e.currentTarget.style.removeProperty('--shine-y');
-        }}
-        style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          background: `linear-gradient(135deg, rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.1), rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.05))`,
-          border: `2px solid ${card.color}`,
-          padding: isLarge ? '24px 32px' : '16px 18px',
-          position: 'relative',
-          textAlign: 'center',
-          boxSizing: 'border-box',
-        }}
+        key={card.id}
+        className={`scatter-card scatter-${card.slot}`}
+        onClick={(e) => handleCardClick(card.id, e)}
       >
-        <div className={`card-label ${isLarge ? 'card-label-large' : 'card-label-small'}`} style={{ color: card.color }}>
-          ◆ {card.title} ◆
+        <div
+          className="card-inner"
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            e.currentTarget.style.setProperty('--shine-x', `${x}%`);
+            e.currentTarget.style.setProperty('--shine-y', `${y}%`);
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.removeProperty('--shine-x');
+            e.currentTarget.style.removeProperty('--shine-y');
+          }}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            alignItems: 'flex-start',
+            borderRadius: '14px',
+            overflow: 'hidden',
+            background: hasBg
+              ? `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.75) 100%), url(${card.bgImage}) center/cover no-repeat`
+              : `linear-gradient(135deg, rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.18), rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.05))`,
+            border: `2px solid ${card.color}`,
+            padding: '18px 20px',
+            position: 'relative',
+            textAlign: 'left',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div className="card-label-scatter" style={{ color: card.color }}>
+            ◆ {card.title} ◆
+          </div>
+          <h2 className="card-title-scatter" style={{ textShadow: `0 2px 10px rgba(0,0,0,0.8), 0 0 20px ${card.color}60` }}>
+            {card.subtitle}
+          </h2>
+          <p className="card-description-scatter">
+            {card.description}
+          </p>
         </div>
-        <h2 className={`card-title ${isLarge ? 'card-title-large' : 'card-title-small'}`} style={{ textShadow: `0 0 20px ${card.color}80, 0 0 40px ${card.color}40` }}>
-          {card.subtitle}
-        </h2>
-        <div className={`card-divider ${isLarge ? 'card-divider-large' : 'card-divider-small'}`} style={{ background: `linear-gradient(90deg, transparent, ${card.color}, transparent)` }} />
-        <p className={`card-description ${isLarge ? 'card-description-large' : 'card-description-small'}`}>
-          {card.description}
-        </p>
       </div>
-    </div>
-  );
-
+    );
+  };
   const expandedCardData = cards.find(c => c.id === expandedCard);
-
+  const stopBubble = (e) => e.stopPropagation();
   return (
     <div className={`about-overlay-wrapper ${isAnimatingOut ? 'no-pointer' : ''}`}>
       <div ref={overlayRef} className="about-overlay-bg-black" />
       <div ref={bgRef} className="about-overlay-bg-pattern" />
-      
       <button onClick={onClose} className="about-close-button">
         <X style={{ width: 22, height: 22, color: '#f87171' }} />
       </button>
-
-      <div ref={containerRef} className="about-container hide-scrollbar">
-        <div className="about-grid">
-          {cards.map(card => (
-            <CardComponent
-              key={card.id}
-              card={card}
-              isLarge={card.size === 'large'}
-            />
-          ))}
+      <div
+        ref={containerRef}
+        className="about-container hide-scrollbar"
+        onMouseDown={stopBubble}
+        onMouseUp={stopBubble}
+        onMouseMove={stopBubble}
+        onTouchStart={stopBubble}
+        onTouchMove={stopBubble}
+        onTouchEnd={stopBubble}
+      >
+        <div className="scatter-stage">
+          <div className="scatter-hero">
+            <img src="/gojo.png" alt="hero" className="scatter-hero-img" draggable={false} />
+          </div>
+          {cards.map(renderCard)}
         </div>
       </div>
-
       {expandedCard && (
-        <div className="expand-backdrop" onClick={(e) => {
-          if (e.target === e.currentTarget) handleCloseExpanded();
-        }}>
+        <div
+          ref={expandBackdropRef}
+          className="expand-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleCloseExpanded();
+          }}
+        >
           <div
+            ref={expandModalRef}
             className="expand-modal hide-scrollbar"
             style={{
               border: `2px solid ${expandedCardData.color}`,
@@ -231,7 +357,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
             >
               <X style={{ width: 20, height: 20, color: expandedCardData.color }} />
             </button>
-
             <div className="expand-content">
               <div className="expand-label" style={{ color: expandedCardData.color }}>
                 ◆ {expandedCardData.title} ◆
