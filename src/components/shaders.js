@@ -13,7 +13,16 @@ export const oceanVertexShader = `uniform float uTime;
       vec2 d = normalize(direction);
       float f = k * (dot(d, pos) - c * speed * uTime);
       float a = steepness / k;
-      return vec3(d.x * a * cos(f), a * sin(f), d.y * a * cos(f));
+      float cf = cos(f);
+      return vec3(d.x * a * cf, a * sin(f), d.y * a * cf);
+    }
+
+    vec3 computeWaves(vec2 pos) {
+      return gerstnerWave(pos, 0.15, 30.0, vec2(1.0, 0.4), 0.6)
+           + gerstnerWave(pos, 0.12, 22.0, vec2(-0.6, 0.8), 0.7)
+           + gerstnerWave(pos, 0.08, 15.0, vec2(0.3, -0.9), 0.9)
+           + gerstnerWave(pos, 0.05, 9.0, vec2(-0.8, -0.5), 1.1)
+           + gerstnerWave(pos, 0.03, 5.0, vec2(0.9, 0.2), 1.3);
     }
 
     float splashWave(vec2 pos) {
@@ -31,14 +40,7 @@ export const oceanVertexShader = `uniform float uTime;
     void main() {
       vUv = uv;
       vec3 pos = position;
-      vec3 wave1 = gerstnerWave(pos.xz, 0.15, 30.0, vec2(1.0, 0.4), 0.6);
-      vec3 wave2 = gerstnerWave(pos.xz, 0.12, 22.0, vec2(-0.6, 0.8), 0.7);
-      vec3 wave3 = gerstnerWave(pos.xz, 0.08, 15.0, vec2(0.3, -0.9), 0.9);
-      vec3 wave4 = gerstnerWave(pos.xz, 0.05, 9.0, vec2(-0.8, -0.5), 1.1);
-      vec3 wave5 = gerstnerWave(pos.xz, 0.03, 5.0, vec2(0.9, 0.2), 1.3);
-      vec3 wave6 = gerstnerWave(pos.xz, 0.02, 3.0, vec2(-0.2, 0.9), 1.5);
-      vec3 wave7 = gerstnerWave(pos.xz, 0.01, 1.5, vec2(0.7, -0.7), 1.8);
-      vec3 totalWave = wave1 + wave2 + wave3 + wave4 + wave5 + wave6 + wave7;
+      vec3 totalWave = computeWaves(pos.xz);
       pos += totalWave;
       float splash = splashWave(pos.xz);
       pos.y += splash;
@@ -46,23 +48,9 @@ export const oceanVertexShader = `uniform float uTime;
       float eps = 0.1;
       vec3 posR = position + vec3(eps, 0.0, 0.0);
       vec3 posU = position + vec3(0.0, 0.0, eps);
-      vec3 wR = gerstnerWave(posR.xz, 0.15, 30.0, vec2(1.0, 0.4), 0.6)
-              + gerstnerWave(posR.xz, 0.12, 22.0, vec2(-0.6, 0.8), 0.7)
-              + gerstnerWave(posR.xz, 0.08, 15.0, vec2(0.3, -0.9), 0.9)
-              + gerstnerWave(posR.xz, 0.05, 9.0, vec2(-0.8, -0.5), 1.1)
-              + gerstnerWave(posR.xz, 0.03, 5.0, vec2(0.9, 0.2), 1.3)
-              + gerstnerWave(posR.xz, 0.02, 3.0, vec2(-0.2, 0.9), 1.5)
-              + gerstnerWave(posR.xz, 0.01, 1.5, vec2(0.7, -0.7), 1.8);
-      posR += wR;
+      posR += computeWaves(posR.xz);
       posR.y += splashWave(posR.xz);
-      vec3 wU = gerstnerWave(posU.xz, 0.15, 30.0, vec2(1.0, 0.4), 0.6)
-              + gerstnerWave(posU.xz, 0.12, 22.0, vec2(-0.6, 0.8), 0.7)
-              + gerstnerWave(posU.xz, 0.08, 15.0, vec2(0.3, -0.9), 0.9)
-              + gerstnerWave(posU.xz, 0.05, 9.0, vec2(-0.8, -0.5), 1.1)
-              + gerstnerWave(posU.xz, 0.03, 5.0, vec2(0.9, 0.2), 1.3)
-              + gerstnerWave(posU.xz, 0.02, 3.0, vec2(-0.2, 0.9), 1.5)
-              + gerstnerWave(posU.xz, 0.01, 1.5, vec2(0.7, -0.7), 1.8);
-      posU += wU;
+      posU += computeWaves(posU.xz);
       posU.y += splashWave(posU.xz);
       vec3 tangent = normalize(posR - pos);
       vec3 bitangent = normalize(posU - pos);
@@ -104,7 +92,7 @@ export const oceanFragmentShader = `uniform float uTime;
     float fbm(vec2 p) {
       float v = 0.0;
       float a = 0.5;
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 4; i++) {
         v += a * noise(p);
         p *= 2.0;
         a *= 0.5;
@@ -145,8 +133,8 @@ export const oceanFragmentShader = `uniform float uTime;
       color += specColor;
       color = mix(color, uFoamColor, clamp(foam, 0.0, 1.0));
       color += sssColor;
-      float causticNoise = fbm(vWorldPos.xz * 3.0 + uTime * 0.6);
-      float causticMask = smoothstep(0.4, 0.8, causticNoise) * (1.0 - foamMask);
+      float causticNoise = noise(vWorldPos.xz * 3.0 + uTime * 0.6);
+      float causticMask = smoothstep(0.5, 0.85, causticNoise) * (1.0 - foamMask);
       color += vec3(0.1, 0.5, 0.4) * causticMask * 0.3;
       float fogDist = length(vWorldPos - cameraPosition);
       float fogFactor = smoothstep(uFogNear, uFogFar, fogDist);
@@ -191,7 +179,7 @@ export const skyFragmentShader = `uniform float uTime;
     float fbm(vec2 p) {
       float v = 0.0;
       float a = 0.5;
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < 5; i++) {
         v += a * noise(p);
         p *= 2.0;
         a *= 0.5;

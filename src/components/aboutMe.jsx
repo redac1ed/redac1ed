@@ -126,13 +126,11 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     const backdrop = expandBackdropRef.current;
     if (!modal || !backdrop) return;
     if (expandAnimRef.current) expandAnimRef.current.pause();
-
     const finalRect = modal.getBoundingClientRect();
     const finalLeft = finalRect.left;
     const finalTop = finalRect.top;
     const finalWidth = finalRect.width;
     const finalHeight = finalRect.height;
-
     Object.assign(modal.style, {
       position: 'fixed',
       margin: '0',
@@ -147,14 +145,12 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       overflow: 'hidden',
       zIndex: '201',
     });
-
     anime({
       targets: backdrop,
       backgroundColor: ['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)'],
       duration: 800,
       easing: 'easeOutQuart',
     });
-
     expandAnimRef.current = anime({
       targets: modal,
       left: [originRect.left, finalLeft],
@@ -181,7 +177,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       });
     }
   }, [expandedCard, originRect]);
-
   const handleCloseExpanded = () => {
     const modal = expandModalRef.current;
     const backdrop = expandBackdropRef.current;
@@ -192,7 +187,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       return;
     }
     if (expandAnimRef.current) expandAnimRef.current.pause();
-
     const currentRect = modal.getBoundingClientRect();
     Object.assign(modal.style, {
       position: 'fixed',
@@ -205,7 +199,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       maxHeight: 'none',
       overflow: 'hidden',
     });
-
     const content = modal.querySelector('.expand-content');
     if (content) {
       anime({
@@ -224,7 +217,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         easing: 'easeInQuad',
       });
     }
-
     expandAnimRef.current = anime({
       targets: modal,
       left: [currentRect.left, originRect.left],
@@ -244,7 +236,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   const r = (hex) => parseInt(hex.slice(1, 3), 16);
   const g = (hex) => parseInt(hex.slice(3, 5), 16);
   const b = (hex) => parseInt(hex.slice(5, 7), 16);
-
   const renderCard = (card) => {
     const hasBg = Boolean(card.bgImage);
     return (

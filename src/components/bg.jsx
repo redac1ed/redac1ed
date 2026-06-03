@@ -8,27 +8,59 @@ import ActivePanelOverlay from './panels';
 
 const OCEAN_Y = -6;
 
+const detectGPU = () => {
+  if (typeof document === 'undefined') return { ok: true, software: false };
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return { ok: false, software: true };
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = (dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER)) || '';
+    const software = /swiftshader|software|llvmpipe|microsoft basic|angle \(google, vulkan/i.test(renderer)
+      && !/angle \((nvidia|amd|intel|apple|radeon|geforce|qualcomm|adreno|mali)/i.test(renderer);
+    return { ok: true, software, renderer };
+  } catch {
+    return { ok: true, software: false };
+  }
+};
+
+const GPU_INFO = detectGPU();
+
+const detectGPUTier = (renderer = '') => {
+  if (/rtx|radeon rx|geforce (gtx 1[0-9]|16|20|30|40)|apple m[1-9]|arc a[0-9]/i.test(renderer)) return 'high';
+  if (/geforce|radeon|nvidia|intel iris|intel arc|adreno (6|7)|apple gpu|mali-g7/i.test(renderer)) return 'mid';
+  if (/intel.*(hd|uhd) graphics|adreno [1-5]|mali-[gt][1-6]/i.test(renderer)) return 'low';
+  return '';
+};
+
 const PERF_TIER = (() => {
   if (typeof window === 'undefined') return 'high';
+  if (!GPU_INFO.ok || GPU_INFO.software) return 'low';
   const ua = navigator.userAgent || '';
   const isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i.test(ua);
+  if (isMobile) return 'low';
+
+  const gpuTier = detectGPUTier(GPU_INFO.renderer);
+  if (gpuTier) return gpuTier;
+
   const cores = navigator.hardwareConcurrency || 4;
   const mem = navigator.deviceMemory || 4;
-  const smallScreen = Math.min(window.innerWidth, window.innerHeight) < 768;
-  if (isMobile || smallScreen || cores <= 4 || mem <= 3) return 'low';
+  if (cores <= 4 || mem <= 3) return 'low';
   if (cores <= 6 || mem <= 6) return 'mid';
   return 'high';
 })();
 
 const IS_LOW = PERF_TIER === 'low';
 const IS_MID = PERF_TIER === 'mid';
+const FORCE_LITE = typeof window !== 'undefined' && /[?&](software|lite)\b/.test(window.location.search);
+const SOFTWARE_RENDER = !GPU_INFO.ok || GPU_INFO.software || FORCE_LITE;
 
-const OCEAN_SEGMENTS = IS_LOW ? 96 : IS_MID ? 192 : 512;
+const OCEAN_SEGMENTS = IS_LOW ? 80 : IS_MID ? 160 : 256;
 const OCEAN_SIZE = IS_LOW ? 1500 : IS_MID ? 2500 : 4000;
-const DUST_COUNT = IS_LOW ? 1200 : IS_MID ? 4000 : 10000;
+const DUST_COUNT = IS_LOW ? 800 : IS_MID ? 3000 : 7000;
 const SPLASH_COUNT = IS_LOW ? 150 : IS_MID ? 350 : 600;
 const SKY_SEGMENTS = IS_LOW ? 24 : IS_MID ? 40 : 64;
-const MAX_DPR = IS_LOW ? 1 : IS_MID ? 1.5 : 2;
+const MAX_DPR = IS_LOW ? 1 : IS_MID ? 1.5 : 1.75;
 const RIPPLE_SEGMENTS = IS_LOW ? 24 : 64;
 
 const SPLASH_VERTEX_SHADER = `
@@ -49,6 +81,28 @@ void main() {
   if (d > 0.5) discard;
   float alpha = smoothstep(0.5, 0.1, d) * vOpacity;
   gl_FragColor = vec4(0.6, 0.85, 1.0, alpha);
+}`;
+
+const DUST_VERTEX_SHADER = `
+uniform float uTime;
+attribute vec2 phase;
+void main() {
+  vec3 p = position;
+  float life = mod(p.y + uTime * 8.0 + 40.0, 80.0) - 40.0;
+  p.y = life;
+  p.x += sin(uTime * 2.0) * 1.5 * phase.x;
+  p.z += cos(uTime * 2.0) * 1.5 * phase.y;
+  vec4 mvPos = modelViewMatrix * vec4(p, 1.0);
+  gl_PointSize = 0.2 * (300.0 / -mvPos.z);
+  gl_Position = projectionMatrix * mvPos;
+}`;
+
+const DUST_FRAGMENT_SHADER = `
+void main() {
+  float d = length(gl_PointCoord - vec2(0.5));
+  if (d > 0.5) discard;
+  float alpha = smoothstep(0.5, 0.15, d) * 0.6;
+  gl_FragColor = vec4(1.0, 0.27, 0.13, alpha);
 }`;
 
 const _vec3A = new THREE.Vector3();
@@ -299,12 +353,13 @@ function WaterRipple({ active }) {
 
 function DustParticles() {
   const count = DUST_COUNT;
+  const materialRef = useRef();
   const { positions, phases } = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const ph = new Float32Array(count * 2);
     for (let i = 0; i < count; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 80;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 60 - 30;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 80 - 40;
       pos[i * 3 + 2] = (Math.random() - 0.5) * 80;
       const a = Math.random() * Math.PI * 2;
       ph[i * 2] = Math.cos(a);
@@ -313,50 +368,26 @@ function DustParticles() {
     return { positions: pos, phases: ph };
   }, [count]);
 
-  const pointsRef = useRef();
-  const frameSkip = useRef(0);
-
-  useFrame((state, delta) => {
-    if (!pointsRef.current) return;
-    if (IS_LOW) {
-      frameSkip.current = (frameSkip.current + 1) % 2;
-      if (frameSkip.current !== 0) return;
+  useFrame((state) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
     }
-    const dt = IS_LOW ? delta * 2 : delta;
-    const t = state.clock.elapsedTime;
-    const swayX = Math.sin(t * 2) * dt * 1.5;
-    const swayZ = Math.cos(t * 2) * dt * 1.5;
-    const pos = pointsRef.current.geometry.attributes.position.array;
-    const upY = dt * 8;
-    for (let i = 0; i < count; i++) {
-      const i3 = i * 3;
-      const i2 = i * 2;
-      pos[i3 + 1] += upY;
-      pos[i3] += swayX * phases[i2];
-      pos[i3 + 2] += swayZ * phases[i2 + 1];
-      if (pos[i3 + 1] > 40) pos[i3 + 1] = -40;
-    }
-    pointsRef.current.geometry.attributes.position.needsUpdate = true;
   });
 
   return (
-    <points ref={pointsRef} frustumCulled={false}>
+    <points frustumCulled={false}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={positions}
-          itemSize={3}
-          usage={THREE.DynamicDrawUsage}
-        />
+        <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-phase" count={count} array={phases} itemSize={2} />
       </bufferGeometry>
-      <pointsMaterial
-        size={0.2}
-        color="#ff4422"
+      <shaderMaterial
+        ref={materialRef}
         transparent
-        opacity={0.6}
-        blending={THREE.AdditiveBlending}
         depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        vertexShader={DUST_VERTEX_SHADER}
+        fragmentShader={DUST_FRAGMENT_SHADER}
+        uniforms={{ uTime: { value: 0 } }}
       />
     </points>
   );
@@ -651,6 +682,51 @@ function Controls({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRu
   );
 }
 
+function AdaptiveQuality() {
+  const { gl } = useThree();
+  const accum = useRef(0);
+  const frames = useRef(0);
+  const currentDpr = useRef(Math.min(window.devicePixelRatio || 1, MAX_DPR));
+  const minDpr = 0.6;
+  const slowStreak = useRef(0);
+  const fastStreak = useRef(0);
+  const settled = useRef(false);
+
+  useFrame((_, delta) => {
+    accum.current += delta;
+    frames.current += 1;
+    if (accum.current < 0.5) return;
+
+    const fps = frames.current / accum.current;
+    accum.current = 0;
+    frames.current = 0;
+
+    if (fps < 45) {
+      slowStreak.current += 1;
+      fastStreak.current = 0;
+    } else if (fps > 57) {
+      fastStreak.current += 1;
+      slowStreak.current = 0;
+    } else {
+      slowStreak.current = 0;
+      fastStreak.current = 0;
+    }
+
+    if (slowStreak.current >= 2 && currentDpr.current > minDpr) {
+      currentDpr.current = Math.max(minDpr, currentDpr.current - 0.25);
+      gl.setPixelRatio(currentDpr.current);
+      slowStreak.current = 0;
+    } else if (!settled.current && fastStreak.current >= 4 && currentDpr.current < MAX_DPR) {
+      currentDpr.current = Math.min(MAX_DPR, currentDpr.current + 0.15);
+      gl.setPixelRatio(currentDpr.current);
+      fastStreak.current = 0;
+      if (currentDpr.current >= MAX_DPR) settled.current = true;
+    }
+  });
+
+  return null;
+}
+
 function SceneContent({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRushComplete }) {
   const [splashActive, setSplashActive] = useState(false);
   const [splashTrigger, setSplashTrigger] = useState(0);
@@ -678,6 +754,7 @@ function SceneContent({ zoomed, rotationTarget, onRotationComplete, rushTarget, 
         <DustParticles />
       </Suspense>
       <Controls zoomed={zoomed} rotationTarget={rotationTarget} onRotationComplete={onRotationComplete} rushTarget={rushTarget} onRushComplete={onRushComplete} />
+      <AdaptiveQuality />
     </>
   );
 }
@@ -691,7 +768,8 @@ const CANVAS_GL = {
 };
 
 const CANVAS_PERFORMANCE = { min: 0.5 };
-const CANVAS_DPR = [1, MAX_DPR];
+const CANVAS_INITIAL_DPR = Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, IS_LOW ? 1 : 1.25);
+const CANVAS_DPR = CANVAS_INITIAL_DPR;
 const CANVAS_CAMERA = { position: [0, 20, 90], fov: 10 };
 
 const ROOT_STYLE = {
@@ -712,8 +790,63 @@ const GRADIENT_STYLE = {
 
 const CANVAS_STYLE = { width: '100vw', height: '100vh' };
 
+const FALLBACK_CSS = `
+@keyframes bgFallbackPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 0.85; }
+}
+@keyframes bgFallbackDrift {
+  0% { transform: translate(-2%, 0) scale(1.1); }
+  50% { transform: translate(2%, -1%) scale(1.15); }
+  100% { transform: translate(-2%, 0) scale(1.1); }
+}
+.bg-fallback-root {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 120%, #5a0a10 0%, #2a0306 35%, #120104 70%, #050102 100%);
+}
+.bg-fallback-glow {
+  position: absolute;
+  inset: -10%;
+  background: radial-gradient(circle at 50% 75%, rgba(204,17,17,0.35), transparent 55%);
+  animation: bgFallbackPulse 6s ease-in-out infinite;
+  will-change: opacity;
+}
+.bg-fallback-clouds {
+  position: absolute;
+  inset: -15%;
+  background:
+    radial-gradient(closest-side at 30% 40%, rgba(160,24,24,0.18), transparent),
+    radial-gradient(closest-side at 70% 30%, rgba(120,10,10,0.16), transparent),
+    radial-gradient(closest-side at 50% 60%, rgba(90,6,6,0.14), transparent);
+  filter: blur(8px);
+  animation: bgFallbackDrift 24s ease-in-out infinite;
+  will-change: transform;
+}
+.bg-fallback-horizon {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 42%;
+  background: linear-gradient(to bottom, transparent, rgba(8,0,2,0.85) 60%, #050102);
+}
+`;
+
+function StaticFallbackBackground() {
+  return (
+    <div className="bg-fallback-root">
+      <style>{FALLBACK_CSS}</style>
+      <div className="bg-fallback-clouds" />
+      <div className="bg-fallback-glow" />
+      <div className="bg-fallback-horizon" />
+    </div>
+  );
+}
+
 export default function AnimeBackground({ zoomed, rotationTarget, currentFace, onRotationComplete, onAboutOpen, rushTarget, onRushComplete }) {
   const bgRef = useRef();
+
   useEffect(() => {
     if (!bgRef.current) return;
     const a = anime({
@@ -725,6 +858,19 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
     });
     return () => { if (a) a.pause(); };
   }, []);
+
+  if (SOFTWARE_RENDER) {
+    return (
+      <div style={ROOT_STYLE}>
+        <StaticFallbackBackground />
+        <ActivePanelOverlay
+          currentFace={currentFace}
+          visible={true}
+          onAboutOpen={onAboutOpen}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={ROOT_STYLE}>
@@ -753,4 +899,6 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
   );
 }
 
-useGLTF.preload('/bg-model/source/Malevolent_shrine_webp_draco.glb');
+if (!SOFTWARE_RENDER) {
+  useGLTF.preload('/bg-model/source/Malevolent_shrine_webp_draco.glb');
+}

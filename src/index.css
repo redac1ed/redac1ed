@@ -513,40 +513,48 @@
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 255, 255, 0.05);
 }
 
-/* Card placement around the central hero */
+/* ===== Scatter layout (matches reference arrangement) =====
+   Large feature card top-left, two small cards clustered bottom-left,
+   one small card top-right, and a tall feature card bottom-right. */
+
+/* Large feature card — upper left */
 .scatter-topLeft {
-  top: 8%;
-  left: 4%;
-  width: 280px;
-  height: 220px;
+  top: 12%;
+  left: 3%;
+  width: 290px;
+  height: 250px;
 }
 
+/* Small card — lower-left cluster (left) */
 .scatter-midLeft {
-  top: 42%;
-  left: 6%;
-  width: 240px;
-  height: 180px;
+  bottom: 8%;
+  left: 3%;
+  width: 175px;
+  height: 150px;
 }
 
+/* Small card — lower-left cluster (right) */
 .scatter-bottomLeft {
-  bottom: 6%;
-  left: 14%;
-  width: 260px;
+  bottom: 8%;
+  left: calc(3% + 190px);
+  width: 175px;
+  height: 150px;
+}
+
+/* Small card — upper right */
+.scatter-topRight {
+  top: 12%;
+  right: 3%;
+  width: 230px;
   height: 200px;
 }
 
-.scatter-topRight {
-  top: 10%;
-  right: 6%;
-  width: 250px;
-  height: 190px;
-}
-
+/* Tall feature card — lower right */
 .scatter-bottomRight {
   bottom: 8%;
-  right: 4%;
-  width: 280px;
-  height: 220px;
+  right: 3%;
+  width: 290px;
+  height: 280px;
 }
 
 .card-label-scatter {

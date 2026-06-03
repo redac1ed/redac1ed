@@ -4,7 +4,6 @@ import { gsap } from 'gsap';
 export default function StartupAnimation({ onComplete }) {
   const containerRef = useRef(null);
   const wrapperRef = useRef(null);
-
   useEffect(() => {
     if (!containerRef.current || !wrapperRef.current) return;
     const lines = containerRef.current.querySelectorAll('.hash-line');
