@@ -7,6 +7,40 @@
   background-color: #000000;
 }
 
+.mobile-blocker {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000000;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-blocker-img {
+  width: auto;
+  height: auto;
+  max-width: 85%;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 16px;
+  animation: mobile-throw 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes mobile-throw {
+  0%   { opacity: 0; transform: scale(0.1); }
+  60%  { opacity: 1; transform: scale(1.12); }
+  78%  { transform: scale(0.94); }
+  90%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 768px) {
+  .mobile-blocker {
+    display: flex;
+  }
+}
+
 .animes-button {
   margin-top: 32px;
   width: 200px;
@@ -502,59 +536,65 @@
   position: absolute;
   cursor: pointer;
   z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   transform-origin: center center;
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease;
   pointer-events: auto;
 }
 
 .scatter-card:hover {
-  transform: scale(1.06);
+  transform: scale(1.04);
   z-index: 10;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 255, 255, 0.05);
 }
 
-/* ===== Scatter layout (matches reference arrangement) =====
-   Large feature card top-left, two small cards clustered bottom-left,
-   one small card top-right, and a tall feature card bottom-right. */
+.scatter-card-image {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
 
-/* Large feature card — upper left */
+.scatter-card-text {
+  padding: 0 4px;
+}
+
 .scatter-topLeft {
-  top: 12%;
+  top: 10%;
   left: 3%;
-  width: 290px;
-  height: 250px;
+  width: 380px;
+  height: 360px;
 }
 
-/* Small card — lower-left cluster (left) */
 .scatter-midLeft {
-  bottom: 8%;
+  bottom: 5%;
   left: 3%;
-  width: 175px;
-  height: 150px;
+  width: 240px;
+  height: 270px;
 }
 
-/* Small card — lower-left cluster (right) */
 .scatter-bottomLeft {
-  bottom: 8%;
-  left: calc(3% + 190px);
-  width: 175px;
-  height: 150px;
+  bottom: 5%;
+  left: calc(3% + 258px);
+  width: 240px;
+  height: 270px;
 }
 
-/* Small card — upper right */
 .scatter-topRight {
-  top: 12%;
+  top: 10%;
   right: 3%;
-  width: 230px;
-  height: 200px;
+  width: 310px;
+  height: 300px;
 }
 
-/* Tall feature card — lower right */
 .scatter-bottomRight {
-  bottom: 8%;
+  bottom: 5%;
   right: 3%;
-  width: 290px;
-  height: 280px;
+  width: 380px;
+  height: 390px;
 }
 
 .card-label-scatter {
@@ -563,22 +603,22 @@
   text-transform: uppercase;
   font-weight: 700;
   opacity: 0.9;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .card-title-scatter {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
   color: #ffffff;
-  letter-spacing: 1px;
-  margin: 0 0 8px 0;
-  line-height: 1.1;
+  letter-spacing: 0.5px;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
 }
 
 .card-description-scatter {
   font-size: 12px;
   line-height: 1.5;
-  color: #e0d0d0;
+  color: #a0a0a0;
   margin: 0;
   max-width: 100%;
 }
@@ -591,14 +631,18 @@
   }
   .scatter-card {
     width: 44% !important;
-    height: 140px !important;
+    height: auto !important;
+  }
+  .scatter-card-image {
+    height: 130px !important;
+    flex: none !important;
   }
   .scatter-topLeft { top: 4%; left: 3%; }
   .scatter-topRight { top: 4%; right: 3%; }
-  .scatter-midLeft { top: 38%; left: 3%; }
-  .scatter-bottomLeft { bottom: 22%; left: 3%; }
+  .scatter-midLeft { top: 40%; left: 3%; }
+  .scatter-bottomLeft { bottom: 4%; left: 3%; }
   .scatter-bottomRight { bottom: 4%; right: 3%; }
-  .card-title-scatter { font-size: 20px; }
+  .card-title-scatter { font-size: 16px; }
 }
 
 .card-inner {

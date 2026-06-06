@@ -4,19 +4,19 @@ import anime from 'animejs';
 const PANELS = [
   {
     title: "About Me",
-    description: "A developer obsessed with crafting immersive\nweb experiences...",
+    description: "Heya! I am redac1ed!!",
   },
   {
-    title: "Dismantle & Cleave",
-    description: "Two innate techniques of the King of Curses...",
+    title: "Contact Me",
+    description: "Wanna collab? Just hit me up!!!",
   },
   {
     title: "",
     description: "",
   },
   {
-    title: "King of Curses",
-    description: "Ryomen Sukuna — the undisputed sovereign...",
+    title: "My Projects",
+    description: "Some random projects I made for fun!!",
   }
 ];
 
@@ -75,7 +75,6 @@ function useScrambleType(text, { startDelay = 0, speed = 35, runKey = 0 } = {}) 
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [text, startDelay, speed, runKey]);
-
   return output;
 }
 
@@ -100,63 +99,64 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
     }
   }, [visible]);
   useEffect(() => {
-    if (currentFace === displayFaceRef.current) return;
-    const card = cardRef.current;
-    if (!card) {
-      setDisplayFace(currentFace);
-      return;
-    }
-    if (exitAnimRef.current) exitAnimRef.current.pause();
-    if (enterAnimRef.current) enterAnimRef.current.pause();
-    let cancelled = false;
-    setTransitionPhase('exiting');
-    exitAnimRef.current = anime({
-      targets: card,
-      translateX: [0, -60],
-      translateY: [0, 0],
-      opacity: [1, 0],
-      filter: ['blur(0px)', 'blur(8px)'],
-      scale: [1, 0.92],
-      duration: 280,
-      easing: 'easeInQuad',
-      complete: () => {
-        if (cancelled) return;
+      if (currentFace === displayFaceRef.current) return;
+      const card = cardRef.current;
+      if (!card) {
         setDisplayFace(currentFace);
-        displayFaceRef.current = currentFace;
-        anime.set(card, {
-          translateX: 60,
-          opacity: 0,
-          filter: 'blur(8px)',
-          scale: 0.92,
-        });
-        setTransitionPhase('entering');
-        enterAnimRef.current = anime({
-          targets: card,
-          translateX: [60, 0],
-          opacity: [0, 1],
-          filter: ['blur(8px)', 'blur(0px)'],
-          scale: [0.92, 1],
-          duration: 520,
-          easing: 'easeOutExpo',
-          complete: () => {
-            if (cancelled) return;
-            setTransitionPhase('idle');
-            anime.set(card, {
-              translateX: 0,
-              opacity: 1,
-              filter: 'blur(0px)',
-              scale: 1,
-            });
-          }
-        });
+        return;
       }
-    });
-    return () => {
-      cancelled = true;
       if (exitAnimRef.current) exitAnimRef.current.pause();
       if (enterAnimRef.current) enterAnimRef.current.pause();
-    };
-  }, [currentFace]);
+      let cancelled = false;
+      const dir = currentFace > displayFaceRef.current ? 1 : -1;
+      setTransitionPhase('exiting');
+      exitAnimRef.current = anime({
+        targets: card,
+        translateX: [0, dir * -60],   
+        translateY: [0, 0],
+        opacity: [1, 0],
+        filter: ['blur(0px)', 'blur(8px)'],
+        scale: [1, 0.92],
+        duration: 280,
+        easing: 'easeInQuad',
+        complete: () => {
+          if (cancelled) return;
+          setDisplayFace(currentFace);
+          displayFaceRef.current = currentFace;
+          anime.set(card, {
+            translateX: dir * 60,     
+            opacity: 0,
+            filter: 'blur(8px)',
+            scale: 0.92,
+          });
+          setTransitionPhase('entering');
+          enterAnimRef.current = anime({
+            targets: card,
+            translateX: [dir * 60, 0], 
+            opacity: [0, 1],
+            filter: ['blur(8px)', 'blur(0px)'],
+            scale: [0.92, 1],
+            duration: 520,
+            easing: 'easeOutExpo',
+            complete: () => {
+              if (cancelled) return;
+              setTransitionPhase('idle');
+              anime.set(card, {
+                translateX: 0,
+                opacity: 1,
+                filter: 'blur(0px)',
+                scale: 1,
+              });
+            }
+          });
+        }
+      });
+      return () => {
+        cancelled = true;
+        if (exitAnimRef.current) exitAnimRef.current.pause();
+        if (enterAnimRef.current) enterAnimRef.current.pause();
+      };
+    }, [currentFace]);
 
   useEffect(() => {
     if (!htmlVisible || !cardRef.current) return;
@@ -231,7 +231,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
               opacity: titleDone ? 1 : 0.6,
               transition: 'opacity 0.4s ease',
             }}>
-              ◆ DOMAIN EXPANSION ◆
+              ◆ redac1ed ◆
             </div>
 
             <div style={{

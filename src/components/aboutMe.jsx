@@ -245,7 +245,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         onClick={(e) => handleCardClick(card.id, e)}
       >
         <div
-          className="card-inner"
+          className="scatter-card-image card-inner"
           onMouseMove={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -258,28 +258,18 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
             e.currentTarget.style.removeProperty('--shine-y');
           }}
           style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            alignItems: 'flex-start',
-            borderRadius: '14px',
-            overflow: 'hidden',
             background: hasBg
-              ? `linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.75) 100%), url(${card.bgImage}) center/cover no-repeat`
-              : `linear-gradient(135deg, rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.18), rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.05))`,
-            border: `2px solid ${card.color}`,
-            padding: '18px 20px',
-            position: 'relative',
-            textAlign: 'left',
+              ? `url(${card.bgImage}) center/cover no-repeat`
+              : `linear-gradient(135deg, rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.25), rgba(${r(card.color)}, ${g(card.color)}, ${b(card.color)}, 0.08))`,
+            border: `2px solid ${card.color}22`,
             boxSizing: 'border-box',
           }}
-        >
+        />
+        <div className="scatter-card-text">
           <div className="card-label-scatter" style={{ color: card.color }}>
             ◆ {card.title} ◆
           </div>
-          <h2 className="card-title-scatter" style={{ textShadow: `0 2px 10px rgba(0,0,0,0.8), 0 0 20px ${card.color}60` }}>
+          <h2 className="card-title-scatter">
             {card.subtitle}
           </h2>
           <p className="card-description-scatter">

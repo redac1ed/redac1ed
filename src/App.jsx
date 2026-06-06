@@ -89,6 +89,9 @@ export default function App() {
 
   return (
     <>
+      <div className="mobile-blocker">
+        <img src="/mobile-page.jpeg" alt="" className="mobile-blocker-img" />
+      </div>
       <style>{`
         html, body, #root {
           width: 100%;
