@@ -1,36 +1,9 @@
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import anime from 'animejs';
+import { useState, useCallback, lazy, Suspense } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import StartupAnimation from './components/startup';
 import AnimeBackground from './components/bg';
 const AboutMeOverlay = lazy(() => import('./components/aboutMe'));
-
-function RushFlash({ onComplete }) {
-  const ref = useRef();
-  useEffect(() => {
-    if (!ref.current) return;
-    anime({
-      targets: ref.current,
-      opacity: [0, 0.9],
-      duration: 1200,
-      easing: 'easeInQuad',
-      complete: () => { if (onComplete) onComplete(); },
-    });
-  }, [onComplete]);
-  return (
-    <div
-      ref={ref}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99,
-        background: '#000000',
-        opacity: 0,
-        pointerEvents: 'none',
-      }}
-    />
-  );
-}
+const ContactOverlay = lazy(() => import('./components/contact'));
 
 export default function App() {
   const [showStartup, setShowStartup] = useState(true);
@@ -38,7 +11,8 @@ export default function App() {
   const [currentFace, setCurrentFace] = useState(0);
   const [showAbout, setShowAbout] = useState(false);
   const [rushTarget, setRushTarget] = useState(null);
-  const [flashing, setFlashing] = useState(false);
+  const [showContact, setShowContact] = useState(false);
+  const [contactRush, setContactRush] = useState(null);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -86,33 +60,24 @@ export default function App() {
     setShowAbout(false);
     setRushTarget(null);
   }, []);
+  const handleContactOpen = useCallback(() => setContactRush({ type: 'in', ts: Date.now() }), []);
+  const handleContactClose = useCallback(() => setContactRush({ type: 'out', ts: Date.now() }), []);
+  const handleContactOut = useCallback(() => { setShowContact(false); setContactRush(null); }, []);
 
   return (
     <>
       <div className="mobile-blocker">
         <img src="/mobile-page.jpeg" alt="" className="mobile-blocker-img" />
       </div>
-      <style>{`
-        html, body, #root {
-          width: 100%;
-          height: 100%;
-          margin: 0;
-          padding: 0;
-          overflow: hidden;
-        }
-      `}</style>
       <div
+        className="app-root"
         onMouseDown={onTouchStart}
         onMouseMove={onTouchMove}
         onMouseUp={onTouchEnd}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        style={{
-          width: '100%',
-          height: '100%',
-          pointerEvents: showStartup ? 'none' : 'auto'
-        }}
+        style={{ pointerEvents: showStartup ? 'none' : 'auto' }}
       >
         <AnimeBackground
           zoomed={false}
@@ -120,9 +85,20 @@ export default function App() {
           currentFace={currentFace}
           onRotationComplete={handleRotationComplete}
           onAboutOpen={handleAboutOpen}
+          onContactOpen={handleContactOpen}   
           rushTarget={rushTarget}
           onRushComplete={handleRushComplete}
         />
+        {(contactRush?.type === 'in' || showContact) && (
+          <Suspense fallback={null}>
+            <ContactOverlay
+              onClose={handleContactClose}
+              isAnimatingIn={contactRush?.type === 'in'}
+              isAnimatingOut={contactRush?.type === 'out'}
+              onOutComplete={handleContactOut}
+            />
+          </Suspense>
+        )}
         {(rushTarget?.type === 'in' || showAbout) && (
           <Suspense fallback={null}>
             <AboutMeOverlay
@@ -134,30 +110,20 @@ export default function App() {
           </Suspense>
         )}
         <button
+          className="nav-button nav-button-left"
           onClick={rotateLeft}
           disabled={showStartup}
-          style={{ 
-            position: 'fixed', left: 24, top: '50%', transform: 'translateY(-50%)', 
-            width: 56, height: 56, borderRadius: '50%', background: 'rgba(10,10,10,0.85)', 
-            border: '2px solid #ffffff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 50,
-            pointerEvents: showStartup ? 'none' : 'auto'
-          }}
+          style={{ pointerEvents: showStartup ? 'none' : 'auto' }}
         >
-          <ChevronLeft style={{ width: 28, height: 28, color: '#ffffff' }} /> 
+          <ChevronLeft className="nav-button-icon" />
         </button>
         <button
+          className="nav-button nav-button-right"
           onClick={rotateRight}
           disabled={showStartup}
-          style={{ 
-            position: 'fixed', right: 24, top: '50%', transform: 'translateY(-50%)', 
-            width: 56, height: 56, borderRadius: '50%', background: 'rgba(10,10,10,0.85)', 
-            border: '2px solid #ffffff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 50,
-            pointerEvents: showStartup ? 'none' : 'auto'
-          }}
+          style={{ pointerEvents: showStartup ? 'none' : 'auto' }}
         >
-          <ChevronRight style={{ width: 28, height: 28, color: '#ffffff' }} /> 
+          <ChevronRight className="nav-button-icon" />
         </button>
       </div>
       {showStartup && <StartupAnimation onComplete={() => setShowStartup(false)} />}

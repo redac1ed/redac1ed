@@ -696,11 +696,9 @@ function AdaptiveQuality() {
     accum.current += delta;
     frames.current += 1;
     if (accum.current < 0.5) return;
-
     const fps = frames.current / accum.current;
     accum.current = 0;
     frames.current = 0;
-
     if (fps < 45) {
       slowStreak.current += 1;
       fastStreak.current = 0;
@@ -711,7 +709,6 @@ function AdaptiveQuality() {
       slowStreak.current = 0;
       fastStreak.current = 0;
     }
-
     if (slowStreak.current >= 2 && currentDpr.current > minDpr) {
       currentDpr.current = Math.max(minDpr, currentDpr.current - 0.25);
       gl.setPixelRatio(currentDpr.current);
@@ -723,21 +720,17 @@ function AdaptiveQuality() {
       if (currentDpr.current >= MAX_DPR) settled.current = true;
     }
   });
-
   return null;
 }
 
 function SceneContent({ zoomed, rotationTarget, onRotationComplete, rushTarget, onRushComplete }) {
   const [splashActive, setSplashActive] = useState(false);
   const [splashTrigger, setSplashTrigger] = useState(0);
-
   const handleCrossWater = useCallback(() => {
     setSplashActive(true);
     setSplashTrigger(prev => prev + 1);
   }, []);
-
   const handleShrineArrived = useCallback(() => {}, []);
-
   return (
     <>
       <fog attach="fog" args={['#1a0306', 80, 280]} />
@@ -766,12 +759,10 @@ const CANVAS_GL = {
   stencil: false,
   depth: true,
 };
-
 const CANVAS_PERFORMANCE = { min: 0.5 };
 const CANVAS_INITIAL_DPR = Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, IS_LOW ? 1 : 1.25);
 const CANVAS_DPR = CANVAS_INITIAL_DPR;
 const CANVAS_CAMERA = { position: [0, 20, 90], fov: 10 };
-
 const ROOT_STYLE = {
   position: 'fixed',
   inset: 0,
@@ -780,16 +771,13 @@ const ROOT_STYLE = {
   width: '100vw',
   height: '100vh',
 };
-
 const GRADIENT_STYLE = {
   position: 'absolute',
   inset: 0,
   background: 'linear-gradient(to bottom, #2a0306, #1a0205, #050102)',
   opacity: 0,
 };
-
 const CANVAS_STYLE = { width: '100vw', height: '100vh' };
-
 const FALLBACK_CSS = `
 @keyframes bgFallbackPulse {
   0%, 100% { opacity: 0.55; }
@@ -844,9 +832,8 @@ function StaticFallbackBackground() {
   );
 }
 
-export default function AnimeBackground({ zoomed, rotationTarget, currentFace, onRotationComplete, onAboutOpen, rushTarget, onRushComplete }) {
-  const bgRef = useRef();
-
+export default function AnimeBackground({ zoomed, rotationTarget, currentFace, onRotationComplete, onAboutOpen, onContactOpen, rushTarget, onRushComplete }) {
+  const bgRef = useRef()
   useEffect(() => {
     if (!bgRef.current) return;
     const a = anime({
@@ -858,7 +845,6 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
     });
     return () => { if (a) a.pause(); };
   }, []);
-
   if (SOFTWARE_RENDER) {
     return (
       <div style={ROOT_STYLE}>
@@ -867,6 +853,7 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
           currentFace={currentFace}
           visible={true}
           onAboutOpen={onAboutOpen}
+          onContactOpen={onContactOpen}
         />
       </div>
     );
@@ -894,6 +881,7 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
         currentFace={currentFace}
         visible={true}
         onAboutOpen={onAboutOpen}
+        onContactOpen={onContactOpen}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import anime from 'animejs';
 
 const PANELS = [
@@ -78,7 +78,7 @@ function useScrambleType(text, { startDelay = 0, speed = 35, runKey = 0 } = {}) 
   return output;
 }
 
-export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }) {
+export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, onContactOpen }) {
   const [htmlVisible, setHtmlVisible] = useState(false);
   const [displayFace, setDisplayFace] = useState(currentFace);
   const [transitionPhase, setTransitionPhase] = useState('idle');
@@ -165,7 +165,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
   }, [htmlVisible, transitionPhase]);
 
   const currentPanel = PANELS[displayFace] || PANELS[0];
-  const isClickable = displayFace === 0;
+  const clickHandler = displayFace === 0 ? onAboutOpen : displayFace === 1 ? onContactOpen : undefined;         
   const isInteractive = Boolean(currentPanel.title);
   const typingActive = transitionPhase !== 'exiting';
   const titleText = typingActive ? currentPanel.title : '';
@@ -187,137 +187,71 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen }
   if (!visible && !htmlVisible) return null;
 
   return (
-    <div style={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      zIndex: isHovered ? 9999 : 10,
-      pointerEvents: isInteractive ? 'auto' : 'none',
-      opacity: htmlVisible ? 1 : 0,
-      transition: 'opacity 0.8s ease',
-    }}>
+    <div
+      className="panel-wrapper"
+      style={{
+        zIndex: isHovered ? 9999 : 10,
+        pointerEvents: isInteractive ? 'auto' : 'none',
+        opacity: htmlVisible ? 1 : 0,
+      }}
+    >
       <div
         ref={cardRef}
-        onClick={isClickable && currentPanel.title ? onAboutOpen : undefined}
+        onClick={clickHandler}
         onMouseEnter={isInteractive ? () => setIsHovered(true) : undefined}
         onMouseLeave={isInteractive ? () => setIsHovered(false) : undefined}
+        className={`panel-card${isInteractive ? ' panel-card--interactive' : ''}`}
         style={{
-          width: '420px',
-          padding: '20px 28px',
-          color: '#f5e6e6',
-          fontFamily: "'Segoe UI', sans-serif",
-          textAlign: 'center',
-          pointerEvents: isInteractive ? 'auto' : 'none',
-          cursor: (isClickable && currentPanel.title) ? 'pointer' : 'default',
-          borderRadius: 4,
-          background: isInteractive ? (isHovered ? 'rgba(204,17,17,0.2)' : 'rgba(10,0,5,0.6)') : 'transparent',
-          border: isInteractive ? '1px solid rgba(204,17,17,0.5)' : 'none',
-          backdropFilter: 'blur(4px)',
-          transition: 'transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.2s ease, border-color 0.3s ease',
           transform: isHovered ? 'scale(1.4)' : 'scale(1)',
-          willChange: 'transform, opacity, filter',
         }}
       >
         {currentPanel.title && (
           <>
-            <div style={{
-              fontSize: '10px',
-              letterSpacing: '4px',
-              textTransform: 'uppercase',
-              color: '#cc2222',
-              marginBottom: '8px',
-              fontWeight: 700,
-              opacity: titleDone ? 1 : 0.6,
-              transition: 'opacity 0.4s ease',
-            }}>
+            <div
+              className="panel-subtitle"
+              style={{ opacity: titleDone ? 1 : 0.6 }}
+            >
               ◆ redac1ed ◆
             </div>
 
-            <div style={{
-              fontSize: '22px',
-              fontWeight: 800,
-              color: '#ffffff',
-              minHeight: '33px',
-              marginBottom: '12px',
-              textShadow: titleDone
-                ? '0 0 18px #cc1111, 0 0 40px #880000'
-                : '0 0 8px #cc1111, 0 0 22px #ff3322',
-              letterSpacing: '1px',
-              fontFamily: "'Segoe UI', sans-serif",
-              transition: 'text-shadow 0.5s ease',
-            }}>
+            <div
+              className="panel-title"
+              style={{
+                textShadow: titleDone
+                  ? '0 0 18px #cc1111, 0 0 40px #880000'
+                  : '0 0 8px #cc1111, 0 0 22px #ff3322',
+              }}
+            >
               {typedTitle}
-              {!titleDone && (
-                <span style={{
-                  display: 'inline-block',
-                  width: '2px',
-                  height: '22px',
-                  background: '#cc1111',
-                  marginLeft: '3px',
-                  verticalAlign: 'middle',
-                  animation: 'panel-cursor-blink 0.6s steps(2) infinite',
-                  boxShadow: '0 0 8px #cc1111',
-                }} />
-              )}
+              {!titleDone && <span className="panel-cursor panel-cursor--title" />}
             </div>
 
-            <div style={{
-              width: titleDone ? '120px' : '24px',
-              height: '2px',
-              background: 'linear-gradient(90deg, transparent, #cc1111, transparent)',
-              margin: '0 auto 14px',
-              transition: 'width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-            }} />
+            <div
+              className="panel-divider"
+              style={{ width: titleDone ? '120px' : '24px' }}
+            />
 
-            <div style={{
-              fontSize: '12px',
-              lineHeight: '1.75',
-              color: '#c9a8a8',
-              fontWeight: 400,
-              whiteSpace: 'pre-line',
-              minHeight: '42px',
-            }}>
+            <div className="panel-description">
               {typedDesc}
               {titleDone && !descDone && typedDesc.length > 0 && (
-                <span style={{
-                  display: 'inline-block',
-                  width: '6px',
-                  height: '12px',
-                  background: '#cc1111',
-                  marginLeft: '2px',
-                  verticalAlign: 'middle',
-                  animation: 'panel-cursor-blink 0.6s steps(2) infinite',
-                  opacity: 0.7,
-                }} />
+                <span className="panel-cursor panel-cursor--desc" />
               )}
             </div>
           </>
         )}
 
-        {isClickable && currentPanel.title && (
-          <div style={{
-            marginTop: 16,
-            fontSize: '10px',
-            letterSpacing: '3px',
-            color: '#cc2222',
-            textTransform: 'uppercase',
-            fontWeight: 700,
-            opacity: descDone ? 1 : 0,
-            transform: descDone ? 'translateY(0)' : 'translateY(6px)',
-            transition: 'opacity 0.5s ease, transform 0.5s ease',
-          }}>
+        {isInteractive && currentPanel.title && (
+          <div
+            className="panel-enter-text"
+            style={{
+              opacity: descDone ? 1 : 0,
+              transform: descDone ? 'translateY(0)' : 'translateY(6px)',
+            }}
+          >
             [ ENTER ]
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes panel-cursor-blink {
-          0%, 100% { opacity: 1; }
-          50%      { opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

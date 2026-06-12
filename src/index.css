@@ -85,12 +85,23 @@
   height: 56px;
   border-radius: 50%;
   background: rgba(10, 10, 10, 0.85);
-  border: 2px solid #ef4444;
+  border: 2px solid #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 50;
+}
+
+.nav-button-icon {
+  width: 28px;
+  height: 28px;
+  color: #ffffff;
+}
+
+.app-root {
+  width: 100%;
+  height: 100%;
 }
 
 .nav-button-left {
@@ -291,6 +302,35 @@
   transition: background 0.2s ease;
 }
 
+.panel-card {
+  width: 420px;
+  padding: 20px 28px;
+  color: #f5e6e6;
+  font-family: 'Segoe UI', sans-serif;
+  text-align: center;
+  pointer-events: none;
+  cursor: default;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  backdrop-filter: blur(4px);
+  transform-origin: center center;
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              background 0.2s ease, border-color 0.3s ease;
+  will-change: transform, opacity, filter;
+}
+
+.panel-card--interactive {
+  pointer-events: auto;
+  cursor: pointer;
+  background: rgba(10, 0, 5, 0.6);
+  border: 1px solid rgba(204, 17, 17, 0.5);
+}
+
+.panel-card--interactive:hover {
+  background: rgba(204, 17, 17, 0.2);
+}
+
 .panel-subtitle {
   font-size: 10px;
   letter-spacing: 4px;
@@ -298,15 +338,19 @@
   color: #cc2222;
   margin-bottom: 8px;
   font-weight: 700;
+  transition: opacity 0.4s ease;
 }
 
 .panel-title {
   font-size: 22px;
   font-weight: 800;
   color: #ffffff;
+  min-height: 33px;
   margin-bottom: 12px;
   text-shadow: 0 0 18px #cc1111, 0 0 40px #880000;
   letter-spacing: 1px;
+  font-family: 'Segoe UI', sans-serif;
+  transition: text-shadow 0.5s ease;
 }
 
 .panel-divider {
@@ -314,6 +358,7 @@
   height: 2px;
   background: linear-gradient(90deg, transparent, #cc1111, transparent);
   margin: 0 auto 14px;
+  transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .panel-description {
@@ -322,6 +367,7 @@
   color: #c9a8a8;
   font-weight: 400;
   white-space: pre-line;
+  min-height: 42px;
 }
 
 .panel-enter-text {
@@ -331,6 +377,33 @@
   color: #cc2222;
   text-transform: uppercase;
   font-weight: 700;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.panel-cursor {
+  display: inline-block;
+  background: #cc1111;
+  vertical-align: middle;
+  animation: panel-cursor-blink 0.6s steps(2) infinite;
+}
+
+.panel-cursor--title {
+  width: 2px;
+  height: 22px;
+  margin-left: 3px;
+  box-shadow: 0 0 8px #cc1111;
+}
+
+.panel-cursor--desc {
+  width: 6px;
+  height: 12px;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+@keyframes panel-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
 }
 
 .panel-clickable {
