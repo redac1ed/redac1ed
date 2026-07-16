@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 
 const videos = [
-  { src: '/cote.mp4', maxTime: 89 },   
-  { src: '/jjk.mp4', maxTime: 90 },  
+  { src: '/cote.mp4', maxTime: 89 },
+  { src: '/jjk.mp4', maxTime: 90 },
   { src: '/sxf.mp4', maxTime: 89 },
-  { src: '/ylia.mp4', maxTime: 90 },  
+  { src: '/ylia.mp4', maxTime: 90 },
 ];
 
 export default function VideoCarousel({ active }) {
@@ -72,67 +72,24 @@ export default function VideoCarousel({ active }) {
   if (!active) return null;
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: '600px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-        background: '#0a0a0a',
-        perspective: '1200px',
-        borderRadius: 8,
-        contain: 'paint',
-      }}
-    >
+    <div ref={containerRef} className="anime-carousel-stage">
       <div
-        style={{
-          width: '100%',
-          height: '100%',
-          transformStyle: 'preserve-3d',
-          transform: `rotateY(${-rotation}deg)`,
-          willChange: 'transform',
-          transition: 'transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-          position: 'relative',
-        }}
+        className="anime-carousel-ring"
+        style={{ transform: `rotateY(${-rotation}deg)` }}
       >
         {videos.map(({ src }, i) => {
           const angle = (i / n) * 360;
-          const radius = 1200; 
+          const radius = 1200;
           return (
             <div
               key={src}
-              style={{
-                position: 'absolute',
-                width: '800px',
-                height: '450px',
-                left: '50%',
-                top: '50%',
-                marginLeft: '-400px',
-                marginTop: '-225px',
-                transformStyle: 'preserve-3d',
-                transform: `rotateY(${angle}deg) translateZ(${radius}px) rotateY(180deg)`,
-                willChange: 'transform',
-                backfaceVisibility: 'hidden',
-                contain: 'layout paint',
-              }}
+              className="anime-carousel-item"
+              style={{ transform: `rotateY(${angle}deg) translateZ(${radius}px) rotateY(180deg)` }}
             >
               <video
                 ref={el => videoRefs.current[i] = el}
                 src={src}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                  pointerEvents: 'none',
-                  borderRadius: '12px',
-                  backgroundColor: '#000',
-                  transform: 'translateZ(0)',
-                }}
+                className="anime-carousel-video"
                 loop
                 playsInline
                 muted

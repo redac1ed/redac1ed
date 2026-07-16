@@ -87,9 +87,32 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
   const exitAnimRef = useRef(null);
   const enterAnimRef = useRef(null);
   const displayFaceRef = useRef(currentFace);
+  const currentPanel = PANELS[displayFace] || PANELS[0];
+  const clickHandler = displayFace === 0 ? onAboutOpen : displayFace === 1 ? onContactOpen : undefined;
+  const isInteractive = Boolean(currentPanel.title);
+  const typingActive = transitionPhase !== 'exiting';
+  const titleText = typingActive ? currentPanel.title : '';
+  const descText = typingActive ? currentPanel.description : '';
+  const runKey = displayFace * 10 + (typingActive ? 1 : 0);
+  const titleDuration = (currentPanel.title?.length || 0) * 55 + 120;
+  const typedTitle = useScrambleType(titleText, {
+    startDelay: 120,
+    speed: 55,
+    runKey,
+  });
+  const typedDesc = useScrambleType(descText, {
+    startDelay: titleDuration + 80,
+    speed: 22,
+    runKey,
+  });
+  const titleDone = typedTitle === currentPanel.title && currentPanel.title.length > 0;
+  const descDone = typedDesc === currentPanel.description && currentPanel.description.length > 0;
+  if (!visible && !htmlVisible) return null;
+
   useEffect(() => {
     displayFaceRef.current = displayFace;
   }, [displayFace]);
+
   useEffect(() => {
     if (visible) {
       const t = setTimeout(() => setHtmlVisible(true), 100);
@@ -98,6 +121,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
       setHtmlVisible(false);
     }
   }, [visible]);
+
   useEffect(() => {
       if (currentFace === displayFaceRef.current) return;
       const card = cardRef.current;
@@ -112,7 +136,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
       setTransitionPhase('exiting');
       exitAnimRef.current = anime({
         targets: card,
-        translateX: [0, dir * -60],   
+        translateX: [0, dir * -60],
         translateY: [0, 0],
         opacity: [1, 0],
         filter: ['blur(0px)', 'blur(8px)'],
@@ -124,7 +148,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
           setDisplayFace(currentFace);
           displayFaceRef.current = currentFace;
           anime.set(card, {
-            translateX: dir * 60,     
+            translateX: dir * 60,
             opacity: 0,
             filter: 'blur(8px)',
             scale: 0.92,
@@ -132,7 +156,7 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
           setTransitionPhase('entering');
           enterAnimRef.current = anime({
             targets: card,
-            translateX: [dir * 60, 0], 
+            translateX: [dir * 60, 0],
             opacity: [0, 1],
             filter: ['blur(8px)', 'blur(0px)'],
             scale: [0.92, 1],
@@ -164,73 +188,27 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
     anime.set(cardRef.current, { translateX: 0, opacity: 1, filter: 'blur(0px)', scale: 1 });
   }, [htmlVisible, transitionPhase]);
 
-  const currentPanel = PANELS[displayFace] || PANELS[0];
-  const clickHandler = displayFace === 0 ? onAboutOpen : displayFace === 1 ? onContactOpen : undefined;         
-  const isInteractive = Boolean(currentPanel.title);
-  const typingActive = transitionPhase !== 'exiting';
-  const titleText = typingActive ? currentPanel.title : '';
-  const descText = typingActive ? currentPanel.description : '';
-  const runKey = displayFace * 10 + (typingActive ? 1 : 0);
-  const typedTitle = useScrambleType(titleText, {
-    startDelay: 120,
-    speed: 55,
-    runKey,
-  });
-  const titleDuration = (currentPanel.title?.length || 0) * 55 + 120;
-  const typedDesc = useScrambleType(descText, {
-    startDelay: titleDuration + 80,
-    speed: 22,
-    runKey,
-  });
-  const titleDone = typedTitle === currentPanel.title && currentPanel.title.length > 0;
-  const descDone = typedDesc === currentPanel.description && currentPanel.description.length > 0;
-  if (!visible && !htmlVisible) return null;
-
   return (
     <div
-      className="panel-wrapper"
-      style={{
-        zIndex: isHovered ? 9999 : 10,
-        pointerEvents: isInteractive ? 'auto' : 'none',
-        opacity: htmlVisible ? 1 : 0,
-      }}
+      className={`panel-wrapper${isInteractive ? ' is-interactive' : ''}${htmlVisible ? ' is-visible' : ''}${isHovered ? ' is-hovered' : ''}`}
     >
       <div
         ref={cardRef}
         onClick={clickHandler}
         onMouseEnter={isInteractive ? () => setIsHovered(true) : undefined}
         onMouseLeave={isInteractive ? () => setIsHovered(false) : undefined}
-        className={`panel-card${isInteractive ? ' panel-card--interactive' : ''}`}
-        style={{
-          transform: isHovered ? 'scale(1.4)' : 'scale(1)',
-        }}
+        className={`panel-card${isInteractive ? ' panel-card--interactive' : ''}${isHovered ? ' is-hovered' : ''}`}
       >
         {currentPanel.title && (
           <>
-            <div
-              className="panel-subtitle"
-              style={{ opacity: titleDone ? 1 : 0.6 }}
-            >
+            <div className={`panel-subtitle${titleDone ? ' is-done' : ''}`}>
               ◆ redac1ed ◆
             </div>
-
-            <div
-              className="panel-title"
-              style={{
-                textShadow: titleDone
-                  ? '0 0 18px #cc1111, 0 0 40px #880000'
-                  : '0 0 8px #cc1111, 0 0 22px #ff3322',
-              }}
-            >
+            <div className={`panel-title${titleDone ? ' is-done' : ''}`}>
               {typedTitle}
               {!titleDone && <span className="panel-cursor panel-cursor--title" />}
             </div>
-
-            <div
-              className="panel-divider"
-              style={{ width: titleDone ? '120px' : '24px' }}
-            />
-
+            <div className={`panel-divider${titleDone ? ' is-done' : ''}`} />
             <div className="panel-description">
               {typedDesc}
               {titleDone && !descDone && typedDesc.length > 0 && (
@@ -239,15 +217,8 @@ export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, 
             </div>
           </>
         )}
-
         {isInteractive && currentPanel.title && (
-          <div
-            className="panel-enter-text"
-            style={{
-              opacity: descDone ? 1 : 0,
-              transform: descDone ? 'translateY(0)' : 'translateY(6px)',
-            }}
-          >
+          <div className={`panel-enter-text${descDone ? ' is-done' : ''}`}>
             [ ENTER ]
           </div>
         )}

@@ -6,8 +6,6 @@ import * as THREE from 'three';
 import anime from 'animejs';
 import ActivePanelOverlay from './panels';
 
-const OCEAN_Y = -6;
-
 const detectGPU = () => {
   if (typeof document === 'undefined') return { ok: true, software: false };
   try {
@@ -23,38 +21,32 @@ const detectGPU = () => {
     return { ok: true, software: false };
   }
 };
-
-const GPU_INFO = detectGPU();
-
 const detectGPUTier = (renderer = '') => {
   if (/rtx|radeon rx|geforce (gtx 1[0-9]|16|20|30|40)|apple m[1-9]|arc a[0-9]/i.test(renderer)) return 'high';
   if (/geforce|radeon|nvidia|intel iris|intel arc|adreno (6|7)|apple gpu|mali-g7/i.test(renderer)) return 'mid';
   if (/intel.*(hd|uhd) graphics|adreno [1-5]|mali-[gt][1-6]/i.test(renderer)) return 'low';
   return '';
 };
-
+const OCEAN_Y = -6;
+const GPU_INFO = detectGPU();
 const PERF_TIER = (() => {
   if (typeof window === 'undefined') return 'high';
   if (!GPU_INFO.ok || GPU_INFO.software) return 'low';
   const ua = navigator.userAgent || '';
   const isMobile = /Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile/i.test(ua);
   if (isMobile) return 'low';
-
   const gpuTier = detectGPUTier(GPU_INFO.renderer);
   if (gpuTier) return gpuTier;
-
   const cores = navigator.hardwareConcurrency || 4;
   const mem = navigator.deviceMemory || 4;
   if (cores <= 4 || mem <= 3) return 'low';
   if (cores <= 6 || mem <= 6) return 'mid';
   return 'high';
 })();
-
 const IS_LOW = PERF_TIER === 'low';
 const IS_MID = PERF_TIER === 'mid';
 const FORCE_LITE = typeof window !== 'undefined' && /[?&](software|lite)\b/.test(window.location.search);
 const SOFTWARE_RENDER = !GPU_INFO.ok || GPU_INFO.software || FORCE_LITE;
-
 const OCEAN_SEGMENTS = IS_LOW ? 80 : IS_MID ? 160 : 256;
 const OCEAN_SIZE = IS_LOW ? 1500 : IS_MID ? 2500 : 4000;
 const DUST_COUNT = IS_LOW ? 800 : IS_MID ? 3000 : 7000;
@@ -62,7 +54,10 @@ const SPLASH_COUNT = IS_LOW ? 150 : IS_MID ? 350 : 600;
 const SKY_SEGMENTS = IS_LOW ? 24 : IS_MID ? 40 : 64;
 const MAX_DPR = IS_LOW ? 1 : IS_MID ? 1.5 : 1.75;
 const RIPPLE_SEGMENTS = IS_LOW ? 24 : 64;
-
+const _vec3A = new THREE.Vector3();
+const _vec3B = new THREE.Vector3();
+const _spherical = new THREE.Spherical();
+const _splashCenter = new THREE.Vector2(0, 0);
 const SPLASH_VERTEX_SHADER = `
 attribute float size;
 attribute float opacity;
@@ -73,7 +68,6 @@ void main() {
   gl_PointSize = size * (200.0 / -mvPos.z);
   gl_Position = projectionMatrix * mvPos;
 }`;
-
 const SPLASH_FRAGMENT_SHADER = `
 varying float vOpacity;
 void main() {
@@ -82,7 +76,6 @@ void main() {
   float alpha = smoothstep(0.5, 0.1, d) * vOpacity;
   gl_FragColor = vec4(0.6, 0.85, 1.0, alpha);
 }`;
-
 const DUST_VERTEX_SHADER = `
 uniform float uTime;
 attribute vec2 phase;
@@ -96,7 +89,6 @@ void main() {
   gl_PointSize = 0.2 * (300.0 / -mvPos.z);
   gl_Position = projectionMatrix * mvPos;
 }`;
-
 const DUST_FRAGMENT_SHADER = `
 void main() {
   float d = length(gl_PointCoord - vec2(0.5));
@@ -104,11 +96,17 @@ void main() {
   float alpha = smoothstep(0.5, 0.15, d) * 0.6;
   gl_FragColor = vec4(1.0, 0.27, 0.13, alpha);
 }`;
-
-const _vec3A = new THREE.Vector3();
-const _vec3B = new THREE.Vector3();
-const _spherical = new THREE.Spherical();
-const _splashCenter = new THREE.Vector2(0, 0);
+const CANVAS_GL = {
+  antialias: !IS_LOW,
+  powerPreference: 'high-performance',
+  alpha: false,
+  stencil: false,
+  depth: true,
+};
+const CANVAS_PERFORMANCE = { min: 0.5 };
+const CANVAS_INITIAL_DPR = Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, IS_LOW ? 1 : 1.25);
+const CANVAS_DPR = CANVAS_INITIAL_DPR;
+const CANVAS_CAMERA = { position: [0, 20, 90], fov: 10 };
 
 function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
   const { scene } = useGLTF('/bg-model/source/Malevolent_shrine_webp_draco.glb');
@@ -118,7 +116,6 @@ function Shrine({ zoomed, onCrossWater, onShrineArrived }) {
   const hasCrossed = useRef(false);
   const scaleAnimRef = useRef(null);
   const riseAnimRef = useRef(null);
-
   const offset = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene);
     const center = new THREE.Vector3();
@@ -208,15 +205,13 @@ function SplashParticles({ active }) {
   const lifetimes = useRef(null);
   const startTime = useRef(0);
   const phase = useRef('idle');
-
+  if (!active && phase.current === 'idle') return null;
   const { positions, sizes, opacities } = useMemo(() => ({
     positions: new Float32Array(count * 3),
     sizes: new Float32Array(count),
     opacities: new Float32Array(count),
   }), [count]);
-
   const baseSizes = useMemo(() => new Float32Array(count), [count]);
-
   const initParticles = useCallback(() => {
     if (!velocities.current) {
       velocities.current = new Float32Array(count * 3);
@@ -293,8 +288,6 @@ function SplashParticles({ active }) {
     attrs.opacity.needsUpdate = true;
     if (allDead) phase.current = 'idle';
   });
-
-  if (!active && phase.current === 'idle') return null;
 
   return (
     <points ref={pointsRef} frustumCulled={false}>
@@ -752,79 +745,9 @@ function SceneContent({ zoomed, rotationTarget, onRotationComplete, rushTarget, 
   );
 }
 
-const CANVAS_GL = {
-  antialias: !IS_LOW,
-  powerPreference: 'high-performance',
-  alpha: false,
-  stencil: false,
-  depth: true,
-};
-const CANVAS_PERFORMANCE = { min: 0.5 };
-const CANVAS_INITIAL_DPR = Math.min(typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1, IS_LOW ? 1 : 1.25);
-const CANVAS_DPR = CANVAS_INITIAL_DPR;
-const CANVAS_CAMERA = { position: [0, 20, 90], fov: 10 };
-const ROOT_STYLE = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 0,
-  backgroundColor: '#000000',
-  width: '100vw',
-  height: '100vh',
-};
-const GRADIENT_STYLE = {
-  position: 'absolute',
-  inset: 0,
-  background: 'linear-gradient(to bottom, #2a0306, #1a0205, #050102)',
-  opacity: 0,
-};
-const CANVAS_STYLE = { width: '100vw', height: '100vh' };
-const FALLBACK_CSS = `
-@keyframes bgFallbackPulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 0.85; }
-}
-@keyframes bgFallbackDrift {
-  0% { transform: translate(-2%, 0) scale(1.1); }
-  50% { transform: translate(2%, -1%) scale(1.15); }
-  100% { transform: translate(-2%, 0) scale(1.1); }
-}
-.bg-fallback-root {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: radial-gradient(ellipse at 50% 120%, #5a0a10 0%, #2a0306 35%, #120104 70%, #050102 100%);
-}
-.bg-fallback-glow {
-  position: absolute;
-  inset: -10%;
-  background: radial-gradient(circle at 50% 75%, rgba(204,17,17,0.35), transparent 55%);
-  animation: bgFallbackPulse 6s ease-in-out infinite;
-  will-change: opacity;
-}
-.bg-fallback-clouds {
-  position: absolute;
-  inset: -15%;
-  background:
-    radial-gradient(closest-side at 30% 40%, rgba(160,24,24,0.18), transparent),
-    radial-gradient(closest-side at 70% 30%, rgba(120,10,10,0.16), transparent),
-    radial-gradient(closest-side at 50% 60%, rgba(90,6,6,0.14), transparent);
-  filter: blur(8px);
-  animation: bgFallbackDrift 24s ease-in-out infinite;
-  will-change: transform;
-}
-.bg-fallback-horizon {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 42%;
-  background: linear-gradient(to bottom, transparent, rgba(8,0,2,0.85) 60%, #050102);
-}
-`;
-
 function StaticFallbackBackground() {
   return (
     <div className="bg-fallback-root">
-      <style>{FALLBACK_CSS}</style>
       <div className="bg-fallback-clouds" />
       <div className="bg-fallback-glow" />
       <div className="bg-fallback-horizon" />
@@ -847,7 +770,7 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
   }, []);
   if (SOFTWARE_RENDER) {
     return (
-      <div style={ROOT_STYLE}>
+      <div className="canvas-background">
         <StaticFallbackBackground />
         <ActivePanelOverlay
           currentFace={currentFace}
@@ -860,11 +783,11 @@ export default function AnimeBackground({ zoomed, rotationTarget, currentFace, o
   }
 
   return (
-    <div style={ROOT_STYLE}>
-      <div ref={bgRef} style={GRADIENT_STYLE} />
+    <div className="canvas-background">
+      <div ref={bgRef} className="gradient-overlay" />
       <Canvas
         camera={CANVAS_CAMERA}
-        style={CANVAS_STYLE}
+        className="bg-canvas"
         dpr={CANVAS_DPR}
         gl={CANVAS_GL}
         performance={CANVAS_PERFORMANCE}

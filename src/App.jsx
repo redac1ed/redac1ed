@@ -18,12 +18,12 @@ export default function App() {
   const [isMouseDown, setIsMouseDown] = useState(false);
   const minSwipeDistance = 50;
   const rotateLeft = useCallback(() => {
-    if (rotationTarget !== null) return; 
+    if (rotationTarget !== null) return;
     setRotationTarget(-1);
     setCurrentFace(prev => (prev + 1) % 4);
   }, [rotationTarget]);
-  const rotateRight = useCallback(() => { 
-    if (rotationTarget !== null) return; 
+  const rotateRight = useCallback(() => {
+    if (rotationTarget !== null) return;
     setRotationTarget(1);
     setCurrentFace(prev => (prev - 1 + 4) % 4);
   }, [rotationTarget]);
@@ -70,14 +70,13 @@ export default function App() {
         <img src="/mobile-page.jpeg" alt="" className="mobile-blocker-img" />
       </div>
       <div
-        className="app-root"
+        className={`app-root${showStartup ? ' is-startup' : ''}`}
         onMouseDown={onTouchStart}
         onMouseMove={onTouchMove}
         onMouseUp={onTouchEnd}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
-        style={{ pointerEvents: showStartup ? 'none' : 'auto' }}
       >
         <AnimeBackground
           zoomed={false}
@@ -85,7 +84,7 @@ export default function App() {
           currentFace={currentFace}
           onRotationComplete={handleRotationComplete}
           onAboutOpen={handleAboutOpen}
-          onContactOpen={handleContactOpen}   
+          onContactOpen={handleContactOpen}
           rushTarget={rushTarget}
           onRushComplete={handleRushComplete}
         />
@@ -113,7 +112,6 @@ export default function App() {
           className="nav-button nav-button-left"
           onClick={rotateLeft}
           disabled={showStartup}
-          style={{ pointerEvents: showStartup ? 'none' : 'auto' }}
         >
           <ChevronLeft className="nav-button-icon" />
         </button>
@@ -121,7 +119,6 @@ export default function App() {
           className="nav-button nav-button-right"
           onClick={rotateRight}
           disabled={showStartup}
-          style={{ pointerEvents: showStartup ? 'none' : 'auto' }}
         >
           <ChevronRight className="nav-button-icon" />
         </button>

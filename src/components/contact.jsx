@@ -8,6 +8,7 @@ export default function ContactOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   const containerRef = useRef();
   const animRef = useRef(null);
   const bgAnimRef = useRef(null);
+  const stopBubble = (e) => e.stopPropagation();
 
   useEffect(() => {
     if (!containerRef.current || !overlayRef.current || !bgRef.current) return;
@@ -26,19 +27,16 @@ export default function ContactOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     };
   }, [isAnimatingIn, isAnimatingOut, onOutComplete]);
 
-  const stopBubble = (e) => e.stopPropagation();
-
   return (
     <div className={`about-overlay-wrapper ${isAnimatingOut ? 'no-pointer' : ''}`}>
       <div ref={overlayRef} className="about-overlay-bg-black" />
       <div ref={bgRef} className="about-overlay-bg-pattern" />
       <button onClick={onClose} className="about-close-button">
-        <X style={{ width: 22, height: 22, color: '#f87171' }} />
+        <X className="about-close-icon" />
       </button>
       <div ref={containerRef} className="about-container hide-scrollbar"
         onMouseDown={stopBubble} onMouseUp={stopBubble} onMouseMove={stopBubble}
         onTouchStart={stopBubble} onTouchMove={stopBubble} onTouchEnd={stopBubble}>
-        {/* your contact content: email, socials, form, etc. */}
       </div>
     </div>
   );

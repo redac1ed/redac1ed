@@ -37,19 +37,7 @@ export default function StartupAnimation({ onComplete }) {
   }, [onComplete]);
 
   return (
-    <div
-      ref={wrapperRef}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        background: '#000000',
-        pointerEvents: 'none'
-      }}
-    >
+    <div ref={wrapperRef} className="startup-wrapper">
       <svg
         ref={containerRef}
         className="startup-svg"
@@ -60,10 +48,6 @@ export default function StartupAnimation({ onComplete }) {
         stroke="#FFFFFF"
         strokeWidth="11"
         strokeLinecap="round"
-        style={{
-          pointerEvents: 'none',
-          overflow: 'visible'
-        }}
       >
         <line className="hash-line" x1="15" y1="35" x2="85" y2="35" pathLength="100" />
         <line className="hash-line" x1="15" y1="65" x2="85" y2="65" pathLength="100" />
