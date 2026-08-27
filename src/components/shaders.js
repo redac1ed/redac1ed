@@ -29,12 +29,18 @@ export const oceanVertexShader = `uniform float uTime;
       float timeSinceSplash = uTime - uSplashTime;
       if (timeSinceSplash < 0.0 || timeSinceSplash > 5.0) return 0.0;
       float dist = length(pos - uSplashCenter);
-      float waveSpeed = 8.0;
+      float waveSpeed = 7.0;
       float waveFront = timeSinceSplash * waveSpeed;
-      float waveWidth = 3.0;
-      float wave = exp(-pow(dist - waveFront, 2.0) / waveWidth);
-      float amplitude = 1.5 * exp(-timeSinceSplash * 0.8) * exp(-dist * 0.05);
-      return sin(dist * 2.0 - timeSinceSplash * 6.0) * wave * amplitude;
+      float waveWidth = 4.5;
+      float ring = exp(-pow(dist - waveFront, 2.0) / waveWidth);
+      float ringAmp = 1.15 * exp(-timeSinceSplash * 0.9) * exp(-dist * 0.06);
+      float rings = sin(dist * 2.2 - timeSinceSplash * 6.5) * ring * ringAmp;
+      float crownR = timeSinceSplash * 3.2;
+      float crown = exp(-pow(dist - crownR, 2.0) / 1.2)
+                    * exp(-timeSinceSplash * 4.5) * 1.4;
+      float cavity = -exp(-pow(dist / max(0.6, 1.2 - timeSinceSplash * 1.2), 2.0))
+                     * exp(-timeSinceSplash * 5.0) * 1.6;
+      return rings + crown + cavity;
     }
 
     void main() {

@@ -1,227 +1,172 @@
 import React, { useState, useEffect, useRef } from 'react';
-import anime from 'animejs';
 
 const PANELS = [
-  {
-    title: "About Me",
-    description: "Heya! I am redac1ed!!",
-  },
-  {
-    title: "Contact Me",
-    description: "Wanna collab? Just hit me up!!!",
-  },
-  {
-    title: "",
-    description: "",
-  },
-  {
-    title: "My Projects",
-    description: "Some random projects I made for fun!!",
-  }
+  { title: "About Me" },
+  { title: "Contact Me" },
+  { title: "" },
+  { title: "My Projects" },
 ];
 
-const SCRAMBLE_CHARS = '!<>-_\\/[]{}—=+*^?#________敵呪術滅相殺領域展開';
+function HandwrittenTitle({ text, animationKey, isErasing, onEraseComplete }) {
+  const letters = Array.from(text);
+  const letterStep = 90;
+  const ruleDelay = 500 + letters.length * letterStep;
 
-function useScrambleType(text, { startDelay = 0, speed = 35, runKey = 0 } = {}) {
-  const [output, setOutput] = useState('');
-  const rafRef = useRef(null);
-  const timeoutRef = useRef(null);
-  useEffect(() => {
-    setOutput('');
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if (!text) return;
-    let cancelled = false;
-    let startTime = 0;
-    let frame = 0;
-    let lastRevealed = -1;
-    let lastOutput = '';
-    const tick = (now) => {
-      if (cancelled) return;
-      if (!startTime) startTime = now;
-      const revealed = Math.min(text.length, Math.floor((now - startTime) / speed));
-      frame++;
-      if (revealed >= text.length) {
-        if (lastOutput !== text) setOutput(text);
-        return;
-      }
-      const scrambleChanged = frame % 2 === 0;
-      if (revealed !== lastRevealed || scrambleChanged) {
-        let out = text.substring(0, revealed);
-        const scrambleAhead = Math.min(3, text.length - revealed);
-        for (let i = 0; i < scrambleAhead; i++) {
-          const targetChar = text[revealed + i];
-          if (targetChar === ' ' || targetChar === '\n') {
-            out += targetChar;
-          } else {
-            out += SCRAMBLE_CHARS[(frame + i * 7) % SCRAMBLE_CHARS.length];
-          }
-        }
-        if (out !== lastOutput) {
-          lastOutput = out;
-          setOutput(out);
-        }
-        lastRevealed = revealed;
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-    timeoutRef.current = setTimeout(() => {
-      startTime = 0;
-      rafRef.current = requestAnimationFrame(tick);
-    }, startDelay);
-    return () => {
-      cancelled = true;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [text, startDelay, speed, runKey]);
-  return output;
+  const handleAnimationEnd = (event) => {
+    if (event.target === event.currentTarget && event.animationName === 'poster-title-erase') {
+      onEraseComplete();
+    }
+  };
+
+  return (
+    <div
+      key={animationKey}
+      className={`poster-title-lockup${isErasing ? ' is-erasing' : ''}${text ? '' : ' is-empty'}`}
+      style={{ '--poster-rule-delay': `${ruleDelay}ms` }}
+      onAnimationEnd={handleAnimationEnd}
+    >
+      {text && (
+        <>
+          <svg
+            className="poster-title"
+            viewBox="0 0 520 112"
+            role="img"
+            aria-label={text}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <text
+              className="poster-title-text"
+              x="50%"
+              y="80"
+              textAnchor="middle"
+              xmlSpace="preserve"
+              aria-hidden="true"
+            >
+              {letters.map((letter, index) => (
+                <tspan
+                  key={`${animationKey}-${index}`}
+                  className={`poster-letter${letter === ' ' ? ' poster-letter--space' : ''}`}
+                  style={{ animationDelay: `${140 + index * letterStep}ms` }}
+                >
+                  {letter === ' ' ? '\u00a0' : letter}
+                </tspan>
+              ))}
+            </text>
+          </svg>
+          <svg className="poster-rule" viewBox="0 0 400 24" aria-hidden="true">
+            <path
+              className="poster-rule-path"
+              pathLength="1"
+              d="M8 13 C70 4 126 18 188 10 S306 15 392 7"
+            />
+          </svg>
+        </>
+      )}
+    </div>
+  );
 }
 
-export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, onContactOpen }) {
+export default function ActivePanelOverlay({ currentFace, visible, onAboutOpen, onContactOpen, onProjectsOpen }) {
   const [htmlVisible, setHtmlVisible] = useState(false);
   const [displayFace, setDisplayFace] = useState(currentFace);
   const [transitionPhase, setTransitionPhase] = useState('idle');
   const [isHovered, setIsHovered] = useState(false);
-  const cardRef = useRef(null);
-  const exitAnimRef = useRef(null);
-  const enterAnimRef = useRef(null);
   const displayFaceRef = useRef(currentFace);
+  const targetFaceRef = useRef(currentFace);
   const currentPanel = PANELS[displayFace] || PANELS[0];
-  const clickHandler = displayFace === 0 ? onAboutOpen : displayFace === 1 ? onContactOpen : undefined;
-  const isInteractive = Boolean(currentPanel.title);
-  const typingActive = transitionPhase !== 'exiting';
-  const titleText = typingActive ? currentPanel.title : '';
-  const descText = typingActive ? currentPanel.description : '';
-  const runKey = displayFace * 10 + (typingActive ? 1 : 0);
-  const titleDuration = (currentPanel.title?.length || 0) * 55 + 120;
-  const typedTitle = useScrambleType(titleText, {
-    startDelay: 120,
-    speed: 55,
-    runKey,
-  });
-  const typedDesc = useScrambleType(descText, {
-    startDelay: titleDuration + 80,
-    speed: 22,
-    runKey,
-  });
-  const titleDone = typedTitle === currentPanel.title && currentPanel.title.length > 0;
-  const descDone = typedDesc === currentPanel.description && currentPanel.description.length > 0;
-  if (!visible && !htmlVisible) return null;
+  const clickHandler = displayFace === 0
+    ? onAboutOpen
+    : displayFace === 1
+      ? onContactOpen
+      : displayFace === 3
+        ? onProjectsOpen
+        : undefined;
+  const isErasing = transitionPhase === 'erasing';
+  const isInteractive = Boolean(clickHandler) && !isErasing;
 
   useEffect(() => {
     displayFaceRef.current = displayFace;
   }, [displayFace]);
 
   useEffect(() => {
-    if (visible) {
-      const t = setTimeout(() => setHtmlVisible(true), 100);
-      return () => clearTimeout(t);
-    } else {
-      setHtmlVisible(false);
-    }
+    const timeout = setTimeout(() => setHtmlVisible(visible), visible ? 100 : 0);
+    return () => clearTimeout(timeout);
   }, [visible]);
 
   useEffect(() => {
-      if (currentFace === displayFaceRef.current) return;
-      const card = cardRef.current;
-      if (!card) {
+    if (currentFace === displayFaceRef.current) return;
+    targetFaceRef.current = currentFace;
+    const frame = requestAnimationFrame(() => {
+      if (!visible && !htmlVisible) {
         setDisplayFace(currentFace);
+        displayFaceRef.current = currentFace;
         return;
       }
-      if (exitAnimRef.current) exitAnimRef.current.pause();
-      if (enterAnimRef.current) enterAnimRef.current.pause();
-      let cancelled = false;
-      const dir = currentFace > displayFaceRef.current ? 1 : -1;
-      setTransitionPhase('exiting');
-      exitAnimRef.current = anime({
-        targets: card,
-        translateX: [0, dir * -60],
-        translateY: [0, 0],
-        opacity: [1, 0],
-        filter: ['blur(0px)', 'blur(8px)'],
-        scale: [1, 0.92],
-        duration: 280,
-        easing: 'easeInQuad',
-        complete: () => {
-          if (cancelled) return;
-          setDisplayFace(currentFace);
-          displayFaceRef.current = currentFace;
-          anime.set(card, {
-            translateX: dir * 60,
-            opacity: 0,
-            filter: 'blur(8px)',
-            scale: 0.92,
-          });
-          setTransitionPhase('entering');
-          enterAnimRef.current = anime({
-            targets: card,
-            translateX: [dir * 60, 0],
-            opacity: [0, 1],
-            filter: ['blur(8px)', 'blur(0px)'],
-            scale: [0.92, 1],
-            duration: 520,
-            easing: 'easeOutExpo',
-            complete: () => {
-              if (cancelled) return;
-              setTransitionPhase('idle');
-              anime.set(card, {
-                translateX: 0,
-                opacity: 1,
-                filter: 'blur(0px)',
-                scale: 1,
-              });
-            }
-          });
-        }
-      });
-      return () => {
-        cancelled = true;
-        if (exitAnimRef.current) exitAnimRef.current.pause();
-        if (enterAnimRef.current) enterAnimRef.current.pause();
-      };
-    }, [currentFace]);
+      setIsHovered(false);
+      setTransitionPhase('erasing');
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentFace, htmlVisible, visible]);
 
-  useEffect(() => {
-    if (!htmlVisible || !cardRef.current) return;
-    if (transitionPhase !== 'idle') return;
-    anime.set(cardRef.current, { translateX: 0, opacity: 1, filter: 'blur(0px)', scale: 1 });
-  }, [htmlVisible, transitionPhase]);
+  const handleEraseComplete = () => {
+    const nextFace = targetFaceRef.current;
+    setDisplayFace(nextFace);
+    displayFaceRef.current = nextFace;
+    setTransitionPhase('idle');
+  };
+
+  if (!visible && !htmlVisible) return null;
 
   return (
     <div
       className={`panel-wrapper${isInteractive ? ' is-interactive' : ''}${htmlVisible ? ' is-visible' : ''}${isHovered ? ' is-hovered' : ''}`}
     >
-      <div
-        ref={cardRef}
-        onClick={clickHandler}
-        onMouseEnter={isInteractive ? () => setIsHovered(true) : undefined}
-        onMouseLeave={isInteractive ? () => setIsHovered(false) : undefined}
-        className={`panel-card${isInteractive ? ' panel-card--interactive' : ''}${isHovered ? ' is-hovered' : ''}`}
-      >
-        {currentPanel.title && (
-          <>
-            <div className={`panel-subtitle${titleDone ? ' is-done' : ''}`}>
-              ◆ redac1ed ◆
-            </div>
-            <div className={`panel-title${titleDone ? ' is-done' : ''}`}>
-              {typedTitle}
-              {!titleDone && <span className="panel-cursor panel-cursor--title" />}
-            </div>
-            <div className={`panel-divider${titleDone ? ' is-done' : ''}`} />
-            <div className="panel-description">
-              {typedDesc}
-              {titleDone && !descDone && typedDesc.length > 0 && (
-                <span className="panel-cursor panel-cursor--desc" />
-              )}
-            </div>
-          </>
-        )}
-        {isInteractive && currentPanel.title && (
-          <div className={`panel-enter-text${descDone ? ' is-done' : ''}`}>
-            [ ENTER ]
+      <svg className="poster-defs" width="0" height="0" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="poster-paper-fx" x="-12%" y="-14%" width="124%" height="130%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.028" numOctaves="8" seed="14" result="paperNoise" />
+            <feDiffuseLighting in="paperNoise" lightingColor="#fffaf0" surfaceScale="2.8" diffuseConstant="1.05" result="paperLight">
+              <feDistantLight azimuth="45" elevation="60" />
+            </feDiffuseLighting>
+            <feTurbulence type="turbulence" baseFrequency="0.048" numOctaves="8" seed="14" result="edgeNoise" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.5" result="softSource" />
+            <feMorphology in="softSource" operator="erode" radius="3.2" result="erodedSource" />
+            <feOffset in="erodedSource" dx="-1.5" dy="-1.5" result="offsetSource" />
+            <feDisplacementMap in="offsetSource" in2="edgeNoise" scale="14" xChannelSelector="B" yChannelSelector="G" result="tornEdge" />
+            <feComposite in="paperLight" in2="tornEdge" operator="atop" result="roughPaper" />
+            <feComposite in="SourceGraphic" in2="tornEdge" operator="atop" result="paperColor" />
+            <feBlend in="roughPaper" in2="paperColor" mode="multiply" />
+          </filter>
+          <filter id="poster-crumb-fx" x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.05 0.08" numOctaves="3" seed="21" result="e" />
+            <feDisplacementMap in="SourceGraphic" in2="e" scale="7" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+          <filter id="poster-ink-fx" x="-5%" y="-12%" width="110%" height="124%" colorInterpolationFilters="sRGB">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018 0.09" numOctaves="2" seed="31" result="inkNoise" />
+            <feDisplacementMap in="SourceGraphic" in2="inkNoise" scale="1.25" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
+      <div className="panel-card">
+        <div
+          onClick={isInteractive ? clickHandler : undefined}
+          onMouseEnter={isInteractive ? () => setIsHovered(true) : undefined}
+          onMouseLeave={isInteractive ? () => setIsHovered(false) : undefined}
+          className={`poster-inner${isInteractive ? ' poster-inner--interactive' : ''}${isHovered ? ' is-hovered' : ''}`}
+        >
+          <div className="poster-paper" />
+          <div className="poster-crumbs" />
+          <span className="poster-tape poster-tape--tl" />
+          <span className="poster-tape poster-tape--br" />
+          <div className="poster-content">
+            <HandwrittenTitle
+              text={currentPanel.title}
+              animationKey={`${displayFace}-${htmlVisible ? 'visible' : 'hidden'}`}
+              isErasing={isErasing}
+              onEraseComplete={handleEraseComplete}
+            />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

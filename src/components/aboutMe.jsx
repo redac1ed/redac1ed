@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import anime from 'animejs';
 import * as CANNON from 'cannon-es';
-import { X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 
 export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut, onOutComplete }) {
   const cards = [
-    { id: 'about', title: 'About Me', subtitle: 'redac1ed', description: 'Hear out my story and how I became a teenage web developer!', fullContent: 'Passionate about React, Three.js, and pushing the limits of what a browser can render.', color: '#cc1111', bgImage: '/sukuna.png' },
-    { id: 'anime', title: 'Anime', subtitle: 'Animes', description: 'My top anime picks that I love!', fullContent: 'My top anime picks that I love!', color: '#006793' },
-    { id: 'likes', title: 'Things I Like', subtitle: 'Things I Like', description: 'Things that inspire me', fullContent: 'My interests and passions', color: '#cc1111' },
-    { id: 'games', title: 'Games', subtitle: 'Games I Love', description: 'The games I (sometimes) play!', fullContent: 'My favorite games and projects', color: '#1a7a5c', bgImage: '/mc.png' },
-    { id: 'other', title: 'Other', subtitle: 'Other stuff', description: 'More about me', fullContent: 'Additional interests and hobbies', color: '#7a3a1a' },
+    { id: 'about', title: 'About Me', subtitle: 'redac1ed', description: 'Hear out my story and how I became a teenage web developer!', fullContent: 'Passionate about React, Three.js, and pushing the limits of what a browser can render.', color: '#cc5f11', bgImage: '/intro.png' },
+    { id: 'likes', title: 'Things I Like', subtitle: 'Things I Like', description: 'Things that inspire me', fullContent: 'My interests and passions', color: '#4182dd', bgImage: '/likes.png' },
+    { id: 'other', subtitle: 'Other stuff', description: 'More about me', fullContent: 'Additional interests and hobbies', color: '#1b0a32', bgImage: '/other.png' },
   ];
   const overlayRef = useRef();
   const bgRef = useRef();
@@ -26,10 +24,13 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   const rafRef = useRef(null);
   const simRef = useRef([]);
   const dragRef = useRef(null);
+  const suppressClickRef = useRef(false);
   const worldRef = useRef(null);
   const jointBodyRef = useRef(null);
   const dragConstraintRef = useRef(null);
+  const activeUntilRef = useRef(0);
   const [introDone, setIntroDone] = useState(false);
+  const [selectedCardIndex, setSelectedCardIndex] = useState(null);
   const moveAnimsRef = useRef([]);
   const stopBubble = (e) => e.stopPropagation();
   const r = (hex) => parseInt(hex.slice(1, 3), 16);
@@ -105,6 +106,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     let pointerVelocityY = 0;
     let pointerInside = false;
     let pointerSeen = false;
+    let fluidSettled = false;
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const resize = () => {
       W = window.innerWidth;
@@ -190,6 +192,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
           );
         }
       }
+      let maxDye = 0;
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const index = y * cols + x;
@@ -200,16 +203,19 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
           const neighborDye = (dye[left] + dye[right] + dye[top] + dye[bottom]) * 0.25;
           const backX = x - nextFlowX[index] * 0.9;
           const backY = y - nextFlowY[index] * 0.9;
-          nextDye[index] = clamp(
+          const value = clamp(
             (sampleField(dye, backX, backY) * 0.9 + neighborDye * 0.1) * DYE_DECAY,
             0,
             1,
           );
+          nextDye[index] = value;
+          if (value > maxDye) maxDye = value;
         }
       }
       [flowX, nextFlowX] = [nextFlowX, flowX];
       [flowY, nextFlowY] = [nextFlowY, flowY];
       [dye, nextDye] = [nextDye, dye];
+      fluidSettled = !pointerInside && maxDye < 0.004;
     };
     const injectFluid = () => {
       if (!pointerInside) return;
@@ -273,8 +279,10 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       }
       ctx.clearRect(0, 0, W, H);
       const maxR = DOT_SPACING / 2 * 1.42;
-      stepFluid(now * 0.001);
-      injectFluid();
+      if (pointerInside || !fluidSettled) {
+        stepFluid(now * 0.001);
+        injectFluid();
+      }
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const idx = (y * cols + x) * 4;
@@ -407,6 +415,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     const LINK_PX = 34;
     const CHAIN_LINK_MASS = 0.2;
     const CARD_MASS = 1.0;
+    const CARD_GROUP = 1;
     simRef.current = els.map((el, i) => {
       const w = el.offsetWidth || 200;
       const h = el.offsetHeight || 240;
@@ -419,7 +428,7 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       const startTopY = -(h + 120);
       const dxStep = Math.sin(dropAngle) * LINK_PX;
       const dyStep = Math.cos(dropAngle) * LINK_PX;
-      const group = 1 << (i % 30);
+      const chainGroup = 1 << (1 + (i % 28));
       const anchor = new CANNON.Body({ mass: 0 });
       anchor.position.set(anchorX, anchorY, 0);
       world.addBody(anchor);
@@ -435,8 +444,8 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
           material: mat,
           linearDamping: 0.9,
           angularDamping: 0.9,
-          collisionFilterGroup: group,
-          collisionFilterMask: group,
+          collisionFilterGroup: chainGroup,
+          collisionFilterMask: chainGroup,
         });
         body.position.set(cx, cy, 0);
         world.addBody(body);
@@ -457,8 +466,8 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         material: mat,
         linearDamping: 0.85,
         angularDamping: 0.85,
-        collisionFilterGroup: group,
-        collisionFilterMask: group,
+        collisionFilterGroup: CARD_GROUP | chainGroup,
+        collisionFilterMask: CARD_GROUP | chainGroup,
       });
       cardBody.position.set(cx, cy, 0);
       world.addBody(cardBody);
@@ -469,8 +478,23 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       cardConstraint.collideConnected = false;
       world.addConstraint(cardConstraint);
       cardBody.angularVelocity.set(0, (Math.random() * 6 + 4) * (Math.random() < 0.5 ? 1 : -1), 0);
-      const maxReach = linkCount * LINK_PX + h;
-      return { el, w, h, anchorX, anchorY, anchor, links, cardBody, chainPts: [], maxReach };
+      const chainReach = linkCount * LINK_PX;
+      const maxReach = chainReach + h;
+      return {
+        el,
+        w,
+        h,
+        anchorX,
+        anchorY,
+        homeAnchorX: anchorX,
+        homeAnchorY: anchorY,
+        anchor,
+        links,
+        cardBody,
+        chainPts: [],
+        chainReach,
+        maxReach,
+      };
     });
     const jointBody = new CANNON.Body({ mass: 0 });
     jointBody.collisionFilterGroup = 0;
@@ -531,14 +555,42 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
       });
     };
     let last = performance.now() / 1000;
+    let restStreak = 0;
+    let sleeping = false;
+    const REST_SPEED_SQ = 4;
+    const REST_FRAMES = 24;
     const step = () => {
-      const now = performance.now() / 1000;
+      const nowMs = performance.now();
+      const now = nowMs / 1000;
       let dt = now - last;
       last = now;
       if (dt > 0.05) dt = 0.05;
-      applyRestoringTorque();
-      world.step(1 / 120, dt, 6);
-      render();
+      const forcedActive = Boolean(dragRef.current) || nowMs < activeUntilRef.current;
+      let maxSpeedSq = 0;
+      const bodies = world.bodies;
+      for (let i = 0; i < bodies.length; i++) {
+        const bd = bodies[i];
+        if (bd.mass === 0) continue;
+        const v = bd.velocity;
+        const av = bd.angularVelocity;
+        const s = v.x * v.x + v.y * v.y + v.z * v.z
+          + (av.x * av.x + av.y * av.y + av.z * av.z) * 1600;
+        if (s > maxSpeedSq) maxSpeedSq = s;
+      }
+      if (forcedActive || maxSpeedSq > REST_SPEED_SQ) {
+        restStreak = 0;
+      } else {
+        restStreak++;
+      }
+      if (forcedActive || restStreak < REST_FRAMES) {
+        applyRestoringTorque();
+        world.step(1 / 120, dt, 6);
+        render();
+        sleeping = false;
+      } else if (!sleeping) {
+        render();
+        sleeping = true;
+      }
       rafRef.current = requestAnimationFrame(step);
     };
     rafRef.current = requestAnimationFrame(step);
@@ -568,8 +620,8 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         const dx = px - c.anchorX;
         const dy = py - c.anchorY;
         const dist = Math.hypot(dx, dy);
-        if (dist > c.maxReach) {
-          const s = c.maxReach / dist;
+        if (dist > drag.maxReach) {
+          const s = drag.maxReach / dist;
           px = c.anchorX + dx * s;
           py = c.anchorY + dy * s;
         }
@@ -585,7 +637,9 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         world.removeConstraint(dragConstraintRef.current);
         dragConstraintRef.current = null;
       }
+      suppressClickRef.current = drag.moved;
       dragRef.current = null;
+      activeUntilRef.current = performance.now() + 1500;
     };
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onUp);
@@ -596,8 +650,9 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
   }, [introDone]);
 
   const beginDrag = (i, e) => {
-    if (e.button !== 2) return;
+    if (e.button !== 0) return;
     e.preventDefault();
+    suppressClickRef.current = false;
     const c = simRef.current[i];
     const world = worldRef.current;
     const joint = jointBodyRef.current;
@@ -609,20 +664,29 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     const worldPoint = new CANNON.Vec3(px, py, 0);
     const localPivot = new CANNON.Vec3();
     c.cardBody.pointToLocalFrame(worldPoint, localPivot);
+    const attachmentToGrab = Math.hypot(localPivot.x, localPivot.y + c.h / 2, localPivot.z);
     const constraint = new CANNON.PointToPointConstraint(c.cardBody, localPivot, joint, new CANNON.Vec3(0, 0, 0));
     world.addConstraint(constraint);
     dragConstraintRef.current = constraint;
     c.cardBody.wakeUp();
-    dragRef.current = { i, moved: false, startX: e.clientX, startY: e.clientY };
+    dragRef.current = {
+      i,
+      moved: false,
+      startX: e.clientX,
+      startY: e.clientY,
+      maxReach: c.chainReach + attachmentToGrab,
+    };
   };
 
   const selectCard = (index) => {
     const sims = simRef.current;
     const stage = stageRef.current;
-    if (!sims || sims.length === 0 || !stage) return;
+    if (!sims || sims.length === 0 || !stage || selectedCardIndex !== null) return;
     const width = stage.getBoundingClientRect().width;
     const n = sims.length;
     const rightX = width * (n / (n + 1));
+    setSelectedCardIndex(index);
+    activeUntilRef.current = performance.now() + 1100;
     moveAnimsRef.current.forEach((a) => a && a.pause());
     moveAnimsRef.current = sims.map((c, i) => {
       if (i === index) {
@@ -656,9 +720,36 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
     });
   };
 
+  const restoreCards = () => {
+    const sims = simRef.current;
+    if (!sims || sims.length === 0) return;
+    setSelectedCardIndex(null);
+    activeUntilRef.current = performance.now() + 1100;
+    moveAnimsRef.current.forEach((a) => a && a.pause());
+    moveAnimsRef.current = sims.map((c) => {
+      const state = { x: c.anchorX, y: c.anchorY };
+      return anime({
+        targets: state,
+        x: c.homeAnchorX,
+        y: c.homeAnchorY,
+        duration: 900,
+        easing: 'easeOutCubic',
+        update: () => {
+          c.anchorX = state.x;
+          c.anchorY = state.y;
+          c.anchor.position.set(state.x, state.y, 0);
+          c.links.forEach((l) => l.wakeUp());
+          c.cardBody.wakeUp();
+        },
+      });
+    });
+  };
+
   const handleCardClick = (index, e) => {
-    if (dragRef.current && (Math.abs(e.clientX - dragRef.current.startX) > 5 ||
-        Math.abs(e.clientY - dragRef.current.startY) > 5)) return;
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
     selectCard(index);
   };
 
@@ -670,7 +761,6 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         ref={(el) => { cardRefs.current[index] = el; }}
         className="hang-card"
         onPointerDown={(e) => beginDrag(index, e)}
-          onContextMenu={(e) => e.preventDefault()}
         onClick={(e) => handleCardClick(index, e)}
       >
         <div className="hang-card-bracket" />
@@ -729,6 +819,20 @@ export default function AboutMeOverlay({ onClose, isAnimatingIn, isAnimatingOut,
         <div className="scatter-stage hang-stage" ref={stageRef}>
           <canvas className="hang-chain-canvas" ref={chainCanvasRef} />
           {cards.map(renderCard)}
+          {selectedCardIndex !== null && (
+            <div
+              className="about-detail-panel"
+              style={{ '--detail-color': cards[selectedCardIndex].color }}
+            >
+              <button type="button" className="about-detail-back" onClick={restoreCards}>
+                <ArrowLeft aria-hidden="true" />
+                <span>Back</span>
+              </button>
+              <div className="about-detail-label">{cards[selectedCardIndex].title}</div>
+              <h2 className="about-detail-title">{cards[selectedCardIndex].subtitle}</h2>
+              <p className="about-detail-copy">{cards[selectedCardIndex].fullContent}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,9 +1,10 @@
-import { useState, useCallback, lazy, Suspense } from 'react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import StartupAnimation from './components/startup';
 import AnimeBackground from './components/bg';
 const AboutMeOverlay = lazy(() => import('./components/aboutMe'));
 const ContactOverlay = lazy(() => import('./components/contact'));
+const ProjectCarousel = lazy(() => import('./components/projects'));
 
 export default function App() {
   const [showStartup, setShowStartup] = useState(true);
@@ -13,6 +14,8 @@ export default function App() {
   const [rushTarget, setRushTarget] = useState(null);
   const [showContact, setShowContact] = useState(false);
   const [contactRush, setContactRush] = useState(null);
+  const [showProjects, setShowProjects] = useState(false);
+  const [canvasPaused, setCanvasPaused] = useState(false);
   const [touchStart, setTouchStart] = useState(null);
   const [touchEnd, setTouchEnd] = useState(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -63,6 +66,17 @@ export default function App() {
   const handleContactOpen = useCallback(() => setContactRush({ type: 'in', ts: Date.now() }), []);
   const handleContactClose = useCallback(() => setContactRush({ type: 'out', ts: Date.now() }), []);
   const handleContactOut = useCallback(() => { setShowContact(false); setContactRush(null); }, []);
+  const handleProjectsOpen = useCallback(() => setShowProjects(true), []);
+  const handleProjectsClose = useCallback(() => setShowProjects(false), []);
+
+  const overlayCovering =
+    (showAbout && rushTarget?.type === 'in') ||
+    showProjects ||
+    contactRush?.type === 'in';
+  useEffect(() => {
+    const timer = setTimeout(() => setCanvasPaused(overlayCovering), overlayCovering ? 480 : 0);
+    return () => clearTimeout(timer);
+  }, [overlayCovering]);
 
   return (
     <>
@@ -80,11 +94,13 @@ export default function App() {
       >
         <AnimeBackground
           zoomed={false}
+          paused={canvasPaused}
           rotationTarget={rotationTarget}
           currentFace={currentFace}
           onRotationComplete={handleRotationComplete}
           onAboutOpen={handleAboutOpen}
           onContactOpen={handleContactOpen}
+          onProjectsOpen={handleProjectsOpen}
           rushTarget={rushTarget}
           onRushComplete={handleRushComplete}
         />
@@ -106,6 +122,11 @@ export default function App() {
               isAnimatingOut={rushTarget?.type === 'out'}
               onOutComplete={handleOutComplete}
             />
+          </Suspense>
+        )}
+        {showProjects && (
+          <Suspense fallback={null}>
+            <ProjectCarousel active={showProjects} onClose={handleProjectsClose} />
           </Suspense>
         )}
         <button
